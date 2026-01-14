@@ -25,6 +25,7 @@ import CardActionArea from "@mui/material/CardActionArea";
 import CardActions from "@mui/material/CardActions";
 import Chip from "@mui/material/Chip";
 import { String } from "three/examples/jsm/transpiler/AST.js";
+import { styled } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Menu from "@mui/material/Menu";
@@ -95,6 +96,18 @@ const ModelList: React.FC<ModelListProps> = ({
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  const VisuallyHiddenInput = styled("input")({
+    clip: "rect(0 0 0 0)",
+    clipPath: "inset(50%)",
+    height: 1,
+    overflow: "hidden",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    whiteSpace: "nowrap",
+    width: 1,
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -232,54 +245,67 @@ const ModelList: React.FC<ModelListProps> = ({
   const selectionMode = selectedIds.size > 0;
 
   return (
-    <div className="flex-1 p-2 sm:p-4 h-full overflow-y-auto bg-vault-800 relative flex flex-col">
+    <div className="flex-1 p-2 sm:p-4 h-full overflow-y-auto relative flex flex-col">
       {/* Header Section */}
       <div className="flex flex-col gap-6 mb-8">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">
-              Model Library
-            </h2>
-            <p className="text-slate-400 text-sm">
-              {processedFolders.length}{" "}
-              {processedFolders.length === 1 ? "folder - " : "folders - "}
-              {processedModels.length}{" "}
-              {processedModels.length === 1 ? "model" : "models"}
-              {models.length !== processedModels.length &&
-                ` (filtered from ${models.length})`}
-            </p>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                alignItems: "baseline",
+              }}
+            >
+              <Typography variant="h4">Model Library</Typography>
+              <Typography variant="body1" sx={{ color: "text.secondary" }}>
+                {processedFolders.length}{" "}
+                {processedFolders.length === 1 ? "folder • " : "folders • "}
+                {processedModels.length}{" "}
+                {processedModels.length === 1 ? "model" : "models"}
+                {models.length !== processedModels.length &&
+                  ` ( filtered from: ${models.length} )`}
+              </Typography>
+            </Stack>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={onSelectAll}
-              className="bg-vault-700 hover:bg-vault-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-            >
-              <CheckSquare className="w-4 h-4" />
-              Select All
-            </button>
-            <button
-              onClick={onImport}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-            >
-              <Globe className="w-4 h-4" />
-              Import URL
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-            >
-              <CloudUpload className="w-4 h-4" />
-              Upload Model
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              accept=".stl,.step,.stp,.3mf"
-              multiple
-            />
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant="outlined"
+                startIcon={<CheckSquare />}
+                onClick={onSelectAll}
+              >
+                {`${
+                  models.length === selectedIds.size
+                    ? "Unselect All"
+                    : "Select All"
+                } `}
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<Globe />}
+                onClick={onImport}
+              >
+                Import URL
+              </Button>
+              <Button
+                component="label"
+                role={undefined}
+                variant="contained"
+                tabIndex={-1}
+                startIcon={<CloudUpload />}
+              >
+                Upload models
+                <VisuallyHiddenInput
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept=".stl,.step,.stp,.3mf"
+                  multiple
+                />
+              </Button>
+            </Stack>
           </div>
         </div>
 
@@ -301,11 +327,15 @@ const ModelList: React.FC<ModelListProps> = ({
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
+                        className={
+                          searchQuery != ""
+                            ? "transition-all opacity-100"
+                            : "transition-all opacity-0"
+                        }
                         onClick={() => {
                           setSearchQuery("");
                           document.getElementById("search-input").value = "";
                         }}
-                        edge="end"
                       >
                         <XCircle />
                       </IconButton>
@@ -425,6 +455,7 @@ const ModelList: React.FC<ModelListProps> = ({
               </div>
             ))}
           </div>
+
           {/* Files */}
           <div
             className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-24"
@@ -447,6 +478,7 @@ const ModelList: React.FC<ModelListProps> = ({
                 </div>
               </div>
             )}
+
             {/* Render Models */}
             {processedModels.map((model) => {
               const isSelected = selectedIds.has(model.id);

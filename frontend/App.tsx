@@ -539,7 +539,7 @@ const App = () => {
       <div
         className={`${
           isDesktop ? "flex" : "flex flex-col"
-        } h-dvh bg-vault-900 text-slate-200 font-sans selection:bg-blue-500/30 overflow-hidden`}
+        } h-dvh text-slate-200 font-sans selection:bg-blue-500/30 overflow-hidden`}
       >
         {isDesktop ? (
           <Sidebar
