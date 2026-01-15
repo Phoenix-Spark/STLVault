@@ -419,7 +419,7 @@ const ModelList: React.FC<ModelListProps> = ({
                 onDrop={(e) => handleFolderDrop(e, folder.id)}
                 className={`cursor-pointer transition-all flex items-center relative overflow-hidden hover:-translate-y-1 ${
                   dragOverFolderId === folder.id
-                    ? " -translate-y-1 brightness-150"
+                    ? " -translate-y-1 brightness-150 ring-2 ring-white rounded-md"
                     : " "
                 }`}
               >
