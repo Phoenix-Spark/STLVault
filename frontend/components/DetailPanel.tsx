@@ -71,7 +71,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
         onUpdate(model.id, { dimensions });
       }
     },
-    [model, onUpdate]
+    [model, onUpdate],
   );
 
   if (!model) return null;
@@ -125,7 +125,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
   };
 
   const handleReplaceThumbnail = async (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
     if (!file || !model) return;
@@ -218,7 +218,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
         <div className="space-y-4">
           <div>
             <Typography variant="h6" gutterBottom>
-              Filename
+              Name
             </Typography>
             {isEditing ? (
               <OutlinedInput
@@ -232,6 +232,11 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
               </Typography>
             )}
           </div>
+
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            Filename: <br></br>
+            {model.id}.{model.name.split(".").pop()}
+          </Typography>
           <Divider />
           <div>
             <Typography variant="body1" gutterBottom>
@@ -357,8 +362,13 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                   File editing:
                 </Typography>
 
-                <Typography variant="body1" gutterBottom>
-                  Source File:
+                <Typography variant="body1">Source File:</Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "text.secondary" }}
+                  gutterBottom
+                >
+                  {model.id}.{model.name.split(".").pop()}
                 </Typography>
                 <div className="flex items-center gap-2 mb-4">
                   <Button
