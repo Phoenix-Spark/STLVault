@@ -427,11 +427,11 @@ const App = () => {
     setSelectedIds(newSet);
   };
 
-  const handleSelectAll = () => {
-    if (selectedIds.size === filteredModels.length) {
+  const handleSelectAll = (filtered) => {
+    if (selectedIds.size === filtered.length) {
       setSelectedIds(new Set());
     } else {
-      const allIds = filteredModels.map((m) => m.id);
+      const allIds = filtered.map((m) => m.id);
       setSelectedIds(new Set(allIds));
     }
   };
@@ -645,7 +645,7 @@ const App = () => {
                   // Selection Props
                   selectedIds={selectedIds}
                   onToggleSelection={handleToggleSelection}
-                  onSelectAll={handleSelectAll}
+                  onSelectAll={(filtered) => handleSelectAll(filtered)}
                   onClearSelection={() => setSelectedIds(new Set())}
                   onNavigateFolder={(id) => setCurrentFolderId(id)}
                   onMoveToFolder={handleDropMove}

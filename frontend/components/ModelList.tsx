@@ -91,7 +91,7 @@ const ModelList: React.FC<ModelListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("date-desc");
   const [activeMenuModelId, setActiveMenuModelId] = useState<string | null>(
-    null
+    null,
   );
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -126,7 +126,7 @@ const ModelList: React.FC<ModelListProps> = ({
       result = result.filter(
         (m) =>
           m.name.toLowerCase().includes(query) ||
-          m.tags.some((t) => t.toLowerCase().includes(query))
+          m.tags.some((t) => t.toLowerCase().includes(query)),
       );
     }
 
@@ -238,7 +238,7 @@ const ModelList: React.FC<ModelListProps> = ({
 
     e.dataTransfer.setData(
       "application/json",
-      JSON.stringify({ modelIds: idsToMove })
+      JSON.stringify({ modelIds: idsToMove }),
     );
     e.dataTransfer.effectAllowed = "move";
   };
@@ -275,7 +275,7 @@ const ModelList: React.FC<ModelListProps> = ({
               <Button
                 variant="outlined"
                 startIcon={<CheckSquare />}
-                onClick={onSelectAll}
+                onClick={() => onSelectAll(processedModels)}
               >
                 {`${
                   models.length === selectedIds.size
