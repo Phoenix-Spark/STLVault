@@ -164,6 +164,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
   return (
     <div className="w-screen sm:w-96 border-l border-vault-700 bg-black flex flex-col h-full shadow-2xl z-20 relative">
       {/* Header */}
+      
       <div className="p-4 border-b border-vault-700 flex justify-between items-center">
         <Typography variant="h6">Model Details</Typography>
         <Button onClick={onClose} variant="outlined" color="primary">

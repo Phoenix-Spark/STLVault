@@ -228,15 +228,12 @@ const App = () => {
     for (const file of files) {
       try {
         let thumbnail: string | undefined = undefined;
-        const lowerName = file.name.toLowerCase();
-        if (lowerName.endsWith(".stl") || lowerName.endsWith(".3mf")) {
-          try {
-            thumbnail = await generateThumbnail(file);
-          } catch (e) {
-            console.warn(
-              "Thumbnail generation failed, uploading without thumbnail",
-            );
-          }
+        try {
+          thumbnail = await generateThumbnail(file);
+        } catch (e) {
+          console.warn(
+            "Thumbnail generation failed, uploading without thumbnail",
+          );
         }
 
         const newModel = await api.uploadModel(
