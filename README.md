@@ -26,7 +26,7 @@
 - **🔗 URL Import:** Import multiple files from Printables URL, with granular file selection. (Only models URL)
 - **🖱️ Drag n' Drop:** Seamlessly import new models or move files between folders.
 - **📦 Bulk Actions:** Tag, move, delete, download, or upload multiple files at once.
-- **👁️ 3D Preview:** Integrated web-based 3D viewer for STL and 3MF files.
+- **👁️ 3D Preview:** Integrated web-based 3D viewer for STL, 3MF, STEP and STP files.
 - **🏷️ Metadata Management:** Add tags, descriptions, and metadata to your models for easy retrieval.
 - **🔍 Global Search:** Sidebar search and filtering to find models library-wide.
 
@@ -146,9 +146,9 @@ The application requires two main volumes to persist data. If you are using the 
 ## 🗺️ Roadmap
 
 - [x] Basic File Management (Upload, Move, Delete)
-- [x] 3D Viewer (STL, 3MF)
+- [x] 3D Viewer (STL, 3MF, STEP)
 - [x] Open in Slicer settings
-- [ ] Thumbnails / 3D viewer for STEP
+- [x] Thumbnails / 3D viewer for STEP
 - [x] Model import via Printables URL
 - [ ] User Authentication
 
