@@ -26,7 +26,7 @@
 - **🔗 URL Import:** Import multiple files from Printables URL, with granular file selection. (Only models URL)
 - **🖱️ Drag n' Drop:** Seamlessly import new models or move files between folders.
 - **📦 Bulk Actions:** Tag, move, delete, download, or upload multiple files at once.
-- **👁️ 3D Preview:** Integrated web-based 3D viewer for STL, 3MF, STEP and STP files.
+- **👁️ 3D Preview:** Integrated web-based 3D viewer for STL, 3MF, STEP and STP files, with Trackball/Orbit controls switch to allow full rotational freedom (beta)
 - **🏷️ Metadata Management:** Add tags, descriptions, and metadata to your models for easy retrieval.
 - **🔍 Global Search:** Sidebar search and filtering to find models library-wide.
 
@@ -139,8 +139,6 @@ The application requires two main volumes to persist data. If you are using the 
 - `/backend/uploads`: Stores your actual 3D model files.
 - `/backend/data`: Stores the SQLite database file.
 
-> **Tip:** If deploying on a NAS or server, map `/backend/uploads` to your existing 3D model library folder to ingest them (import functionality may be required).
-
 ---
 
 ## 🗺️ Roadmap
@@ -149,8 +147,15 @@ The application requires two main volumes to persist data. If you are using the 
 - [x] 3D Viewer (STL, 3MF, STEP)
 - [x] Open in Slicer settings
 - [x] Thumbnails / 3D viewer for STEP
-- [x] Model import via Printables URL
-- [ ] User Authentication
+- [x] Model import via Printables URL with interactive models selection.
+- [ ] Backend folder structure follows frontend
+- [ ] "All models" folder Pagination to speedup large collection first load.
+- [ ] Zip Import
+- [ ] Root folder Scan and import
+- [ ] Generate thumbnail from 3D Preview (to fix bad oriented models or to choose a better angle)
+- [ ] Models Collections (to group models for projects or variants)
+- [ ] Implement routing and navigation via url to allow back page navigation functionality and page retention on refresh.
+- [ ] Multi-User with Authentication
 
 ---
 
