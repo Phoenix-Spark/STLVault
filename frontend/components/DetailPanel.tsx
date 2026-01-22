@@ -156,6 +156,20 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
   };
 
   const handleSave = () => {
+    const getExtension = (filename: string) => {
+      const parts = filename.split(".");
+      return parts.length > 1 ? parts.pop()?.toLowerCase() : "";
+    };
+
+    const currentExt = getExtension(model.name);
+    const editExt = getExtension(editName);
+    let newName = "";
+    if (editExt != currentExt) {
+      newName = editName + "." + currentExt;
+    } else {
+      newName = editName;
+    }
+
     const newTags = editTags
       .split(",")
       .map((t) => t.trim())
@@ -163,14 +177,14 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
 
     if (tempThumb != "") {
       onUpdate(model.id, {
-        name: editName,
+        name: newName,
         description: editDesc,
         tags: newTags,
         thumbnail: tempThumb,
       });
     } else {
       onUpdate(model.id, {
-        name: editName,
+        name: newName,
         description: editDesc,
         tags: newTags,
       });
