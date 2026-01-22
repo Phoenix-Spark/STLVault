@@ -42,6 +42,7 @@ const App = () => {
   });
 
   const [currentFolderId, setCurrentFolderId] = useState<string>("all");
+  const [currentFolderParentId, setCurrentFolderParentId] = useState("");
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<number>(0);
@@ -124,6 +125,11 @@ const App = () => {
   // Clear selection when changing folders to avoid confusion
   useEffect(() => {
     setSelectedIds(new Set());
+    setCurrentFolderParentId(
+      currentFolderId === "all"
+        ? "all"
+        : folders.find((f) => f.id === currentFolderId)?.parentId || "all",
+    );
   }, [currentFolderId]);
 
   // Close mobile sidebar when switching to desktop
@@ -636,6 +642,9 @@ const App = () => {
                   models={filteredModels}
                   folders={filteredFolders}
                   currentFolderName={currentFolderName}
+                  onBackNavigation={() => {
+                    setCurrentFolderId(currentFolderParentId);
+                  }}
                   onUpload={(files) => handleUpload(files)}
                   onImport={handleOpenImport}
                   onSelectModel={(m) => setSelectedModelId(m.id)}

@@ -45,6 +45,7 @@ interface ModelListProps {
   models: STLModel[];
   folders: Folder[];
   currentFolderName: string;
+  onBackNavigation: () => void;
   onUpload: (files: FileList) => void;
   onImport: () => void;
   onSelectModel: (model: STLModel) => void;
@@ -75,6 +76,7 @@ const ModelList: React.FC<ModelListProps> = ({
   models,
   folders,
   currentFolderName,
+  onBackNavigation,
   onUpload,
   onImport,
   onSelectModel,
@@ -374,35 +376,77 @@ const ModelList: React.FC<ModelListProps> = ({
 
       {/* Grid */}
       {processedModels.length === 0 && processedFolders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center flex-1 text-slate-500 border-2 border-dashed border-vault-700 rounded-xl bg-vault-900/30">
-          {searchQuery ? (
-            <>
-              <Search className="w-12 h-12 mb-4 opacity-50" />
-              <p className="text-lg">No matches found</p>
-              <p className="text-sm">Try adjusting your search query</p>
-            </>
-          ) : (
-            <>
-              <FileBox className="w-16 h-16 mb-4 opacity-50" />
-              <p className="text-lg">This folder is empty</p>
-              <p className="text-sm">
-                Drag and drop STL or STEP files to upload
-              </p>
-              {isTouchDevice && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Tap to choose files
-                </button>
-              )}
-            </>
-          )}
+        <div>
+          <Button
+            disabled={currentFolderName === "All Models"}
+            aria-label="navigate back"
+            startIcon={<ChevronLeft />}
+            onClick={() => {
+              onBackNavigation();
+            }}
+          >
+            Back
+          </Button>
+          <div
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className="flex flex-col items-center justify-center flex-1 mt-2 text-slate-500 border-2 border-dashed border-vault-700 rounded-xl bg-vault-900/30"
+          >
+            {searchQuery ? (
+              <>
+                <Search className="w-12 h-12 mb-4 opacity-50" />
+                <p className="text-lg">No matches found</p>
+                <p className="text-sm">Try adjusting your search query</p>
+              </>
+            ) : (
+              <>
+                {isDragging && (
+                  <div className="relative bg-white/20 border-4 border-dashed border-white-500 m-2 z-50 flex items-center justify-center backdrop-blur-sm m-4 rounded-md pointer-events-none">
+                    <div className="text-center p-4">
+                      <CloudUpload className="w-16 h-16 text-blue-400 mx-auto mb-4 animate-bounce" />
+                      <h2 className="text-2xl font-bold text-white">
+                        Drop 3D files
+                      </h2>
+                      <p className="text-blue-200 mt-2">
+                        Supported: STL, STEP, 3MF
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {!isDragging && (
+                  <div className="flex-col text-center py-4">
+                    <FileBox className="w-16 h-16 mb-4 mx-auto opacity-50" />
+                    <p className="text-lg">This folder is empty</p>
+                    <p className="text-sm">
+                      Drag and drop STL or STEP files to upload
+                    </p>
+                  </div>
+                )}
+                {isTouchDevice && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Tap to choose files
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       ) : (
         <div>
-          <Button aria-label="navigate back" startIcon={<ChevronLeft />}>
+          <Button
+            disabled={currentFolderName === "All Models"}
+            aria-label="navigate back"
+            startIcon={<ChevronLeft />}
+            onClick={() => {
+              onBackNavigation();
+            }}
+          >
             Back
           </Button>
           {/* Folders */}
@@ -473,7 +517,7 @@ const ModelList: React.FC<ModelListProps> = ({
             {/* Drag Overlay */}
             {isDragging && (
               <div className="relative bg-white/20 border-4 border-dashed border-white-500 z-50 flex items-center justify-center backdrop-blur-sm m-4 rounded-md pointer-events-none">
-                <div className="text-center">
+                <div className="text-center ">
                   <CloudUpload className="w-16 h-16 text-blue-400 mx-auto mb-4 animate-bounce" />
                   <h2 className="text-2xl font-bold text-white">
                     Drop 3D files

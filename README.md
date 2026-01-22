@@ -152,9 +152,8 @@ The application requires two main volumes to persist data. If you are using the 
 - [ ] "All models" folder Pagination to speedup large collection first load.
 - [ ] Zip Import
 - [ ] Root folder Scan and import
-- [ ] Generate thumbnail from 3D Preview (to fix bad oriented models or to choose a better angle)
+- [x] Generate thumbnail from 3D Preview (to fix bad oriented models or to choose a better angle)
 - [ ] Models Collections (to group models for projects or variants)
-- [ ] Implement routing and navigation via url to allow back page navigation functionality and page retention on refresh.
 - [ ] Multi-User with Authentication
 
 ---
