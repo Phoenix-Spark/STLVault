@@ -8,7 +8,7 @@ import React, {
   ReactNode,
   Component,
 } from "react";
-import { Canvas, useLoader } from "@react-three/fiber";
+import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import {
   OrbitControls,
   Stage,
@@ -19,9 +19,17 @@ import {
 } from "@react-three/drei";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
-import { Maximize, Minimize, FileWarning, Rotate3d, Orbit } from "lucide-react";
+import {
+  Maximize,
+  Minimize,
+  FileWarning,
+  Rotate3d,
+  Orbit,
+  GalleryVerticalEnd,
+} from "lucide-react";
 import * as THREE from "three";
 import { LoadStep } from "./STEPLoader";
+import Button from "@mui/material/Button";
 
 let API_BASE_URL = "";
 
@@ -68,7 +76,11 @@ interface Viewer3DProps {
   url: string;
   filename: string;
   thumbnail;
+  editing?: boolean;
   color?: string;
+  updateThumb?: boolean;
+  onThumbnail?: (data: string) => void;
+  onMakeThumbnail?: (dataurl: string) => void;
   onLoaded?: (dimensions: { x: number; y: number; z: number }) => void;
 }
 
@@ -78,6 +90,8 @@ const Model = ({
   thumbnail,
   color = "#3b82f6",
   onLoaded,
+  updateThumb,
+  onThumbnail,
 }: Viewer3DProps) => {
   const ext = useMemo(() => {
     return filename.toLowerCase().split(".").pop();
@@ -96,6 +110,14 @@ const Model = ({
       return data as THREE.BufferGeometry;
     }
   }, [data, ext]);
+
+  const { gl } = useThree();
+  useMemo(() => {
+    if (updateThumb) {
+      let canvas = gl.domElement.toDataURL("image/png");
+      onThumbnail(canvas);
+    }
+  }, [updateThumb]);
 
   useLayoutEffect(() => {
     const box = new THREE.Box3();
@@ -160,7 +182,13 @@ const Model = ({
   );
 };
 
-function StepModel({ url }) {
+const StepModel = ({
+  url,
+  filename,
+  thumbnail,
+  updateThumb,
+  onThumbnail,
+}: Viewer3DProps) => {
   const [obj, setObj] = useState(null);
   useEffect(() => {
     async function load() {
@@ -170,6 +198,14 @@ function StepModel({ url }) {
     }
     load();
   }, []);
+  const { gl } = useThree();
+  useMemo(() => {
+    if (updateThumb) {
+      let canvas = gl.domElement.toDataURL("image/png");
+      onThumbnail(canvas);
+    }
+  }, [updateThumb]);
+
   if (!obj) {
     return null;
   }
@@ -178,18 +214,21 @@ function StepModel({ url }) {
       <meshStandardMaterial color="#3b82f6" roughness={0.3} metalness={0.1} />
     </mesh>
   );
-}
+};
 
 const Viewer3D: React.FC<Viewer3DProps> = ({
   url,
   filename,
   thumbnail,
+  editing,
+  onMakeThumbnail,
   onLoaded,
 }) => {
   const [error, setError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [orbitMode, SetOrbitMode] = useState(true);
+  const [updateThumb, setUpdateThumb] = useState(false);
 
   const unsupportedFormat = useMemo(() => {
     const lower = filename.toLowerCase();
@@ -232,6 +271,11 @@ const Viewer3D: React.FC<Viewer3DProps> = ({
     }
   };
 
+  function onThumb(data: string) {
+    onMakeThumbnail(data);
+    setUpdateThumb(false);
+  }
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -271,7 +315,12 @@ const Viewer3D: React.FC<Viewer3DProps> = ({
         isFullscreen ? "flex items-center justify-center" : ""
       }`}
     >
-      <Canvas shadows camera={{ position: [0, 0, 295], fov: 50 }}>
+      <Canvas
+        id="3dcanvas"
+        shadows
+        camera={{ position: [0, 0, 295], fov: 50 }}
+        gl={{ preserveDrawingBuffer: true }}
+      >
         {/* Reduced ambient light to allow the Stage directional lighting to create contrast/shadows */}
         <ambientLight intensity={0.4} />
 
@@ -279,13 +328,21 @@ const Viewer3D: React.FC<Viewer3DProps> = ({
           <Center>
             <ErrorBoundary onError={() => setError(true)}>
               {format == "stp" ? (
-                <StepModel url={url} />
+                <StepModel
+                  url={url}
+                  filename={filename}
+                  thumbnail={thumbnail}
+                  updateThumb={updateThumb}
+                  onThumbnail={onThumb}
+                />
               ) : (
                 <Model
                   url={url}
                   filename={filename}
                   thumbnail={thumbnail}
                   onLoaded={onLoaded}
+                  updateThumb={updateThumb}
+                  onThumbnail={onThumb}
                 />
               )}
             </ErrorBoundary>
@@ -301,7 +358,7 @@ const Viewer3D: React.FC<Viewer3DProps> = ({
       </Canvas>
 
       {/* Controls Overlay */}
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <div className="absolute top-4 right-4 opacity-100 transition-opacity duration-300">
         <button
           onClick={toggleFullscreen}
           className="bg-black/50 hover:bg-black/70 text-white p-2 rounded-lg backdrop-blur-sm transition-colors"
@@ -314,7 +371,7 @@ const Viewer3D: React.FC<Viewer3DProps> = ({
           )}
         </button>
       </div>
-      <div className="absolute bottom-10 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <div className="absolute bottom-10 right-4 opacity-100 transition-opacity duration-300">
         <button
           onClick={() => SetOrbitMode(!orbitMode)}
           className="bg-black/50 hover:bg-black/70 text-white p-2 rounded-lg backdrop-blur-sm transition-colors"
@@ -326,6 +383,23 @@ const Viewer3D: React.FC<Viewer3DProps> = ({
       <div className="absolute bottom-4 right-4 bg-black/50 px-3 py-1 rounded text-xs text-slate-300 pointer-events-none">
         LMB: Rotate | RMB: Pan | Scroll: Zoom
       </div>
+      {editing ? (
+        <div className="absolute top-4 px-4 ">
+          <Button
+            fullWidth
+            onClick={() => {
+              setUpdateThumb(true);
+            }}
+            startIcon={<GalleryVerticalEnd />}
+            variant="contained"
+            color="secondary"
+          >
+            Generate Thumbnail
+          </Button>
+        </div>
+      ) : (
+        <div></div>
+      )}
     </div>
   );
 };

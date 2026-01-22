@@ -47,6 +47,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editTags, setEditTags] = useState("");
+  const [tempThumb, setTempThumb] = useState("");
   const [errorState, setErrorState] = useState<{
     show: boolean;
     message: string;
@@ -61,6 +62,8 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
       setEditDesc(model.description || "");
       setEditTags(model.tags.join(", "));
       setIsEditing(false);
+      setIsReplacing(false);
+      setTempThumb("");
       setErrorState({ show: false, message: "" });
     }
   }, [model]);
@@ -148,23 +151,38 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   };
 
+  const handleGenerateThumbnail = (dataurl: string) => {
+    setTempThumb(dataurl);
+  };
+
   const handleSave = () => {
     const newTags = editTags
       .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
-    onUpdate(model.id, {
-      name: editName,
-      description: editDesc,
-      tags: newTags,
-    });
+
+    if (tempThumb != "") {
+      onUpdate(model.id, {
+        name: editName,
+        description: editDesc,
+        tags: newTags,
+        thumbnail: tempThumb,
+      });
+    } else {
+      onUpdate(model.id, {
+        name: editName,
+        description: editDesc,
+        tags: newTags,
+      });
+    }
+
     setIsEditing(false);
   };
 
   return (
     <div className="w-screen sm:w-96 border-l border-vault-700 bg-black flex flex-col h-full shadow-2xl z-20 relative">
       {/* Header */}
-      
+
       <div className="p-4 border-b border-vault-700 flex justify-between items-center">
         <Typography variant="h6">Model Details</Typography>
         <Button onClick={onClose} variant="outlined" color="primary">
@@ -179,6 +197,8 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             url={model.url}
             filename={model.name}
             thumbnail={model.thumbnail}
+            editing={isEditing}
+            onMakeThumbnail={handleGenerateThumbnail}
             onLoaded={handleModelLoaded}
           />
         </div>
@@ -393,11 +413,11 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                 <Typography variant="body1" gutterBottom>
                   Thumbnail:
                 </Typography>
-                <Stack direction="column">
+                <Stack direction="column" spacing={1}>
                   <div className="w-full object-cover mb-4 ">
                     <img
                       className="h-60 w-60 mx-auto rounded-md"
-                      src={model.thumbnail}
+                      src={tempThumb != "" ? tempThumb : model.thumbnail}
                       alt="thumbnail"
                     />
                   </div>
@@ -415,6 +435,18 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
                       accept=".jpeg,.png,.jpg"
                       onChange={handleReplaceThumbnail}
                     />
+                  </Button>
+                  <Button
+                    disabled={isReplacing}
+                    onClick={() => {
+                      setTempThumb("");
+                    }}
+                    component="label"
+                    variant="contained"
+                    color="warning"
+                    startIcon={<X />}
+                  >
+                    Clear Generated Thumbnail
                   </Button>
                 </Stack>
               </div>
