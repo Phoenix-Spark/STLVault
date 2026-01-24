@@ -27,6 +27,7 @@
 - **🖱️ Drag n' Drop:** Seamlessly import new models or move files between folders.
 - **📦 Bulk Actions:** Tag, move, delete, download, or upload multiple files at once.
 - **👁️ 3D Preview:** Integrated web-based 3D viewer for STL, 3MF, STEP and STP files, with Trackball/Orbit controls switch to allow full rotational freedom (beta)
+- **🖼️ Custom Thumbnails:** Generate a thumbnail of the model from the 3D viewer directly or upload an image to be shown as a thumbnail.
 - **🏷️ Metadata Management:** Add tags, descriptions, and metadata to your models for easy retrieval.
 - **🔍 Global Search:** Sidebar search and filtering to find models library-wide.
 
