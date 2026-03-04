@@ -83,6 +83,7 @@ const Navbar: React.FC<NavbarProps> = ({
 				</button>
 			)}
 
+			{onOpenSettings && (
 			<button
 				type="button"
 				onClick={onOpenSettings}
@@ -91,6 +92,7 @@ const Navbar: React.FC<NavbarProps> = ({
 			>
 				<SettingsIcon className="w-5 h-5" />
 			</button>
+		)}
 
 			<button
 				type="button"

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import Navbar from "../components/Navbar";
 import { authApi } from "../services/auth";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -12,8 +12,7 @@ import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 
 const Profile: React.FC = () => {
-  const { user, token, updateProfile } = useAuth();
-  const navigate = useNavigate();
+  const { user, updateProfile } = useAuth();
 
   const [displayName, setDisplayName] = useState(user?.display_name ?? "");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -53,28 +52,7 @@ const Profile: React.FC = () => {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      {/* Top bar */}
-      <Box
-        sx={{
-          height: 56,
-          borderBottom: 1,
-          borderColor: "divider",
-          display: "flex",
-          alignItems: "center",
-          px: 3,
-          gap: 2,
-        }}
-      >
-        <Typography variant="subtitle1" fontWeight={700} sx={{ flexGrow: 1 }}>
-          STLVault
-        </Typography>
-        <Button size="small" onClick={() => navigate("/dashboard")}>
-          Dashboard
-        </Button>
-        <Button size="small" onClick={() => navigate("/")}>
-          Browse Vault
-        </Button>
-      </Box>
+      <Navbar showMenuButton={false} />
 
       <Box sx={{ maxWidth: 560, mx: "auto", px: 3, py: 4 }}>
         <Typography variant="h5" fontWeight={700} mb={3}>

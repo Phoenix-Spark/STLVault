@@ -158,7 +158,7 @@ const ModelList: React.FC<ModelListProps> = ({
       }
     });
 
-    // In "All Models" view with no search, show only the most recent N models
+    // In "Home" view with no search, show only the most recent N models
     if (isAllView && !searchQuery.trim()) {
       result = result.slice(0, RECENT_LIMIT);
     }
@@ -386,7 +386,7 @@ const ModelList: React.FC<ModelListProps> = ({
       {processedModels.length === 0 && processedFolders.length === 0 ? (
         <div>
           <Button
-            disabled={currentFolderName === "All Models"}
+            disabled={currentFolderName === "Home"}
             aria-label="navigate back"
             startIcon={<ChevronLeft />}
             onClick={() => {
@@ -448,7 +448,7 @@ const ModelList: React.FC<ModelListProps> = ({
       ) : (
         <div>
           <Button
-            disabled={currentFolderName === "All Models"}
+            disabled={currentFolderName === "Home"}
             aria-label="navigate back"
             startIcon={<ChevronLeft />}
             onClick={() => {

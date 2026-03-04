@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import Navbar from "../components/Navbar";
 import { api } from "../services/api";
 import { STLModel } from "../types";
 import Box from "@mui/material/Box";
@@ -136,28 +137,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      {/* Top bar */}
-      <Box
-        sx={{
-          height: 56,
-          borderBottom: 1,
-          borderColor: "divider",
-          display: "flex",
-          alignItems: "center",
-          px: 3,
-          gap: 2,
-        }}
-      >
-        <Typography variant="subtitle1" fontWeight={700} sx={{ flexGrow: 1 }}>
-          STLVault
-        </Typography>
-        <Button size="small" onClick={() => navigate("/")}>
-          Browse Vault
-        </Button>
-        <Button size="small" onClick={() => navigate("/profile")}>
-          Profile
-        </Button>
-      </Box>
+      <Navbar showMenuButton={false} />
 
       <Box sx={{ maxWidth: 1200, mx: "auto", px: 3, py: 4 }}>
         {/* Welcome */}

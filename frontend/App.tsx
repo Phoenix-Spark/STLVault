@@ -57,6 +57,9 @@ const App = () => {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploadFolderId, setUploadFolderId] = useState("");
   const [uploadTags, setUploadTags] = useState("");
+  const [uploadMode, setUploadMode] = useState<"existing" | "new">("existing");
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
 
   // Import Modal State
   const [showImportModal, setShowImportModal] = useState(false);
@@ -178,7 +181,7 @@ const App = () => {
 
   const currentFolderName =
     currentFolderId === "all"
-      ? "All Models"
+      ? "Home"
       : folders.find((f) => f.id === currentFolderId)?.name || "Folder";
 
   const handleCreateFolder = async (
@@ -265,9 +268,13 @@ const App = () => {
     // We want to show the modal to let user pick a folder and add tags
     if (!specificFolderId && currentFolderId === "all") {
       setPendingFiles(files);
-      // Default to first folder if available
-      setUploadFolderId(folders.length > 0 ? folders[0].id : "");
+      // Default to first approved folder if available
+      const approvedFolders = folders.filter((f) => f.status !== "pending");
+      setUploadFolderId(approvedFolders.length > 0 ? approvedFolders[0].id : "");
       setUploadTags("");
+      setUploadMode("existing");
+      setNewFolderName("");
+      setNewFolderParentId(null);
       setShowUploadModal(true);
       return;
     }
@@ -286,14 +293,29 @@ const App = () => {
 
   const handleConfirmUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadFolderId) return;
+
+    let targetFolderId = uploadFolderId;
+
+    if (uploadMode === "new") {
+      if (!newFolderName.trim()) return;
+      try {
+        const newFolder = await api.createFolder(newFolderName.trim(), newFolderParentId);
+        setFolders((prev) => [...prev, newFolder]);
+        targetFolderId = newFolder.id;
+      } catch (err) {
+        console.error("Failed to request folder", err);
+        return;
+      }
+    }
+
+    if (!targetFolderId) return;
 
     const tags = uploadTags
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
     setShowUploadModal(false);
-    await executeUpload(pendingFiles, uploadFolderId, tags);
+    await executeUpload(pendingFiles, targetFolderId, tags);
     setPendingFiles([]);
   };
 
@@ -562,12 +584,17 @@ const App = () => {
   };
 
   return (
-    <div
-        className={`${
-          isDesktop ? "flex" : "flex flex-col"
-        } h-dvh text-slate-200 font-sans selection:bg-blue-500/30 overflow-hidden`}
-      >
-        {isDesktop ? (
+    <div className="flex flex-col h-dvh text-slate-200 font-sans selection:bg-blue-500/30 overflow-hidden">
+        <Navbar
+          title="STL Vault"
+          subtitle={!isDesktop && !showSettings ? currentFolderName : undefined}
+          onOpenSidebar={!isDesktop ? () => setIsMobileSidebarOpen(true) : undefined}
+          onOpenSettings={() => setShowSettings(true)}
+          showMenuButton={!isDesktop && !showSettings}
+        />
+
+        <div className="flex flex-1 overflow-hidden">
+        {isDesktop && (
           <Sidebar
             folders={folders}
             models={models}
@@ -588,17 +615,9 @@ const App = () => {
             onOpenSettings={() => setShowSettings(true)}
             variant="desktop"
           />
-        ) : (
-          <>
-            <Navbar
-              title="STL Vault"
-              subtitle={showSettings ? "Settings" : currentFolderName}
-              onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-              onOpenSettings={() => setShowSettings(true)}
-              showMenuButton={!showSettings}
-            />
+        )}
 
-            {isMobileSidebarMounted && (
+        {!isDesktop && isMobileSidebarMounted && (
               <div className="fixed inset-0 z-[70]">
                 <div
                   className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-200 ${
@@ -639,8 +658,6 @@ const App = () => {
                   />
                 </div>
               </div>
-            )}
-          </>
         )}
 
         {/* Settings View */}
@@ -838,23 +855,72 @@ const App = () => {
                       </div>
 
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-400 mb-1">
+                        <label className="block text-sm font-medium text-slate-400 mb-2">
                           Destination Folder
                         </label>
-                        <select
-                          className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none"
-                          value={uploadFolderId}
-                          onChange={(e) => setUploadFolderId(e.target.value)}
-                        >
-                          <option value="" disabled>
-                            Select a folder...
-                          </option>
-                          {folders.map((folder) => (
-                            <option key={folder.id} value={folder.id}>
-                              {folder.name}
+                        <div className="flex gap-2 mb-3">
+                          <button
+                            type="button"
+                            onClick={() => setUploadMode("existing")}
+                            className={`flex-1 py-1.5 text-sm rounded-md border transition-colors ${uploadMode === "existing" ? "bg-blue-600 border-blue-500 text-white" : "bg-vault-900 border-vault-700 text-slate-400 hover:text-white"}`}
+                          >
+                            Existing
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUploadMode("new")}
+                            className={`flex-1 py-1.5 text-sm rounded-md border transition-colors ${uploadMode === "new" ? "bg-blue-600 border-blue-500 text-white" : "bg-vault-900 border-vault-700 text-slate-400 hover:text-white"}`}
+                          >
+                            Request New
+                          </button>
+                        </div>
+
+                        {uploadMode === "existing" ? (
+                          <select
+                            className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none"
+                            value={uploadFolderId}
+                            onChange={(e) => setUploadFolderId(e.target.value)}
+                          >
+                            <option value="" disabled>
+                              Select a folder...
                             </option>
-                          ))}
-                        </select>
+                            {folders
+                              .filter((f) => f.status !== "pending")
+                              .map((folder) => (
+                                <option key={folder.id} value={folder.id}>
+                                  {folder.name}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none placeholder:text-slate-600"
+                              placeholder="Folder name..."
+                              value={newFolderName}
+                              onChange={(e) => setNewFolderName(e.target.value)}
+                              autoFocus
+                            />
+                            <select
+                              className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none"
+                              value={newFolderParentId ?? ""}
+                              onChange={(e) => setNewFolderParentId(e.target.value || null)}
+                            >
+                              <option value="">Root level</option>
+                              {folders
+                                .filter((f) => f.status !== "pending")
+                                .map((folder) => (
+                                  <option key={folder.id} value={folder.id}>
+                                    {folder.name}
+                                  </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-amber-400">
+                              This folder will be reviewed by an admin before it appears in the vault.
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="mb-6">
@@ -883,7 +949,7 @@ const App = () => {
                         </button>
                         <button
                           type="submit"
-                          disabled={!uploadFolderId}
+                          disabled={uploadMode === "existing" ? !uploadFolderId : !newFolderName.trim()}
                           className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Upload
@@ -1283,8 +1349,9 @@ const App = () => {
             </main>
           </>
         )}
+        </div>
         <Snackbar
-          open={!port ? true : false}
+          open={port === "TERA_API_URL"}
           autoHideDuration={6000}
           message="API Host Not Set"
           anchorOrigin={{ vertical: "top", horizontal: "center" }}

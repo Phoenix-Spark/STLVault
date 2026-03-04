@@ -35,6 +35,7 @@ import Container from "@mui/material/Container";
 import Button from "@mui/material/Button";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Badge from "@mui/material/Badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 const APP_TAG = import.meta.env.VITE_APP_TAG || "dev";
 
@@ -67,6 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
   variant = "desktop",
 }) => {
+  const { user } = useAuth();
   const isDesktopVariant = variant === "desktop";
   const [isCreatingRoot, setIsCreatingRoot] = useState(false);
   const [newRootName, setNewRootName] = useState("");
@@ -243,36 +245,22 @@ const Sidebar: React.FC<SidebarProps> = ({
   // Root folders
   const rootFolders = folders.filter((f) => f.parentId === null);
 
-  //builds the treeview structure
+  //builds the treeview structure recursively to any depth
   const treefolders = () => {
-    const treeitems: TreeViewDefaultItemModelProperties[] = [];
-    rootFolders.map((folder) => {
-      treeitems.push({
-        id: folder.id,
-        label: folder.name,
-        children: [],
-      });
-    });
-    treeitems.map((folder) => {
-      folders.map((subfolder) => {
-        if (subfolder.parentId === folder.id) {
-          folder.children.push({ id: subfolder.id, label: subfolder.name });
-        }
-      });
-      folder.children.sort((a, b) => {
-        return a.label.localeCompare(b.label);
-      });
-    });
-    treeitems.sort((a, b) => {
-      return a.label.localeCompare(b.label);
-    });
-    return treeitems;
+    const buildTree = (parentId: string | null): TreeViewDefaultItemModelProperties[] =>
+      folders
+        .filter((f) => f.parentId === parentId)
+        .map((f) => ({ id: f.id, label: f.name, children: buildTree(f.id) }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    return buildTree(null);
   };
 
   interface CustomLabelProps extends UseTreeItemLabelSlotOwnProps {
     status: UseTreeItemStatus;
     onClick: React.MouseEventHandler<HTMLElement>;
     onPlusClick: React.MouseEventHandler<HTMLElement>;
+    isPending: boolean;
+    isSuperuser: boolean;
   }
 
   function CustomLabel({
@@ -280,6 +268,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     status,
     onClick,
     onPlusClick,
+    isPending,
+    isSuperuser,
     ...props
   }: CustomLabelProps) {
     return (
@@ -291,26 +281,30 @@ const Sidebar: React.FC<SidebarProps> = ({
         sx={{ minWidth: 0 }}
         {...props}
       >
-        <Typography noWrap>{children}</Typography>
-        <Stack direction="row">
-          <IconButton
-            onClick={onPlusClick}
-            aria-label="select item"
-            size="small"
-            sx={{ color: "grey.300" }}
-          >
-            <PlusIcon />
-          </IconButton>
-          <IconButton
-            onClick={onClick}
-            aria-label="select item"
-            size="small"
-            edge="end"
-            sx={{ color: "grey.300" }}
-          >
-            <Trash2 />
-          </IconButton>
-        </Stack>
+        <Typography noWrap sx={{ color: isPending ? "warning.main" : "text.primary" }}>
+          {children}{isPending ? " (pending)" : ""}
+        </Typography>
+        {isSuperuser && (
+          <Stack direction="row">
+            <IconButton
+              onClick={onPlusClick}
+              aria-label="add subfolder"
+              size="small"
+              sx={{ color: "grey.300" }}
+            >
+              <PlusIcon />
+            </IconButton>
+            <IconButton
+              onClick={onClick}
+              aria-label="delete folder"
+              size="small"
+              edge="end"
+              sx={{ color: "grey.300" }}
+            >
+              <Trash2 />
+            </IconButton>
+          </Stack>
+        )}
       </Stack>
     );
   }
@@ -319,17 +313,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     props: TreeItemProps,
     ref: React.Ref<HTMLLIElement>,
   ) {
-    const { interactions, status } = useTreeItemUtils({
+    const { status } = useTreeItemUtils({
       itemId: props.itemId,
       children: props.children,
     });
 
-    const handleContentClick: UseTreeItemContentSlotOwnProps["onClick"] = (
-      event,
-    ) => {
+    const handleContentClick: UseTreeItemContentSlotOwnProps["onClick"] = () => {
       onSelectFolder(props.itemId);
     };
     const count = folderCounts[props.itemId] || 0;
+    const folder = folders.find((f) => f.id === props.itemId);
+    const isPending = folder?.status === "pending";
 
     const handleIconButtonClick = (event: React.MouseEvent) => {
       event.stopPropagation();
@@ -364,6 +358,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               onClick: handleIconButtonClick,
               onPlusClick: handlePlusClick,
               status,
+              isPending,
+              isSuperuser: !!user?.is_superuser,
             },
             content: { onClick: handleContentClick },
           } as TreeItemSlotProps
@@ -407,19 +403,21 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 space-y-0.5 scrollbar-thin scrollbar-thumb-vault-700 scrollbar-track-transparent overflow-y-scroll">
-        <div className="px-4 mb-4">
-          <Button
-            fullWidth
-            startIcon={<Plus />}
-            onClick={() => {
-              setIsCreatingRoot(true);
-              document.getElementById("folder-name-input").focus();
-            }}
-            variant="outlined"
-          >
-            New Root Folder
-          </Button>
-        </div>
+        {user?.is_superuser && (
+          <div className="px-4 mb-4">
+            <Button
+              fullWidth
+              startIcon={<Plus />}
+              onClick={() => {
+                setIsCreatingRoot(true);
+                document.getElementById("folder-name-input").focus();
+              }}
+              variant="outlined"
+            >
+              New Root Folder
+            </Button>
+          </div>
+        )}
 
         <form
           onSubmit={handleCreateFolderSubmit}
@@ -492,7 +490,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           Settings
         </Button>
 
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md p-3 shadow-lg">
+        {user.is_superuser && <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md p-3 shadow-lg">
           <p className="text-xs text-white/80 font-medium mb-1 truncate mb-2">
             Storage Used
           </p>
@@ -506,7 +504,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span>{formatSize(storageStats.used)}</span>
             <span>{formatSize(storageStats.total)}</span>
           </p>
-        </div>
+        </div>}
       </div>
 
       {/* Resizer Handle */}

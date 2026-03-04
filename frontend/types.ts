@@ -14,6 +14,8 @@ export interface Folder {
   id: string;
   name: string;
   parentId: string | null;
+  status?: "pending" | "approved";
+  requested_by?: string | null;
   icon?: string;
 }
 

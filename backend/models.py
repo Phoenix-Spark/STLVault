@@ -16,6 +16,8 @@ class Folder(Base):
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     parentId = Column(String, nullable=True)
+    status = Column(String, nullable=False, server_default="approved")
+    requested_by = Column(String, nullable=True)  # user UUID
 
 
 class STLModel(Base):

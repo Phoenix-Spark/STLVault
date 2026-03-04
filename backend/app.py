@@ -104,6 +104,13 @@ async def startup():
         await conn.execute(text(
             "ALTER TABLE models ADD COLUMN IF NOT EXISTS denial_reason TEXT"
         ))
+        # Folder approval workflow columns
+        await conn.execute(text(
+            "ALTER TABLE folders ADD COLUMN IF NOT EXISTS status VARCHAR NOT NULL DEFAULT 'approved'"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE folders ADD COLUMN IF NOT EXISTS requested_by VARCHAR"
+        ))
 
     # Promote ADMIN_EMAIL to superuser on first boot (idempotent)
     if ADMIN_EMAIL:
@@ -135,7 +142,13 @@ def now_ms() -> int:
 
 
 def folder_to_dict(f: Folder) -> dict:
-    return {"id": f.id, "name": f.name, "parentId": f.parentId}
+    return {
+        "id": f.id,
+        "name": f.name,
+        "parentId": f.parentId,
+        "status": f.status or "approved",
+        "requested_by": f.requested_by,
+    }
 
 
 def model_to_dict(m: STLModel) -> dict:
@@ -193,14 +206,21 @@ class DenyPayload(BaseModel):
     reason: str = ""
 
 
+class ApproveFolderPayload(BaseModel):
+    name: Optional[str] = None
+
+
 # --- Folder endpoints ---
 
 @app.get("/api/folders")
 async def get_folders(
     session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(current_active_verified_user),
+    user: User = Depends(current_active_verified_user),
 ):
-    result = await session.execute(select(Folder))
+    if user.is_superuser:
+        result = await session.execute(select(Folder))
+    else:
+        result = await session.execute(select(Folder).where(Folder.status == "approved"))
     return [folder_to_dict(f) for f in result.scalars().all()]
 
 
@@ -208,10 +228,13 @@ async def get_folders(
 async def create_folder(
     item: FolderData,
     session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(current_active_verified_user),
+    user: User = Depends(current_active_verified_user),
 ):
     fid = str(uuid.uuid4())
-    folder = Folder(id=fid, name=item.name, parentId=item.parentId)
+    status = "approved" if user.is_superuser else "pending"
+    requested_by = None if user.is_superuser else str(user.id)
+    folder = Folder(id=fid, name=item.name, parentId=item.parentId,
+                    status=status, requested_by=requested_by)
     session.add(folder)
     await session.commit()
     return folder_to_dict(folder)
@@ -634,6 +657,93 @@ async def admin_deny_model(
 
     result = await session.execute(select(STLModel).where(STLModel.id == model_id))
     return model_to_dict(result.scalar_one())
+
+
+@app.get("/api/admin/pending-folders")
+async def admin_get_pending_folders(
+    session: AsyncSession = Depends(get_async_session),
+    _user: User = Depends(current_admin_user),
+):
+    result = await session.execute(
+        select(Folder).where(Folder.status == "pending").order_by(Folder.id)
+    )
+    folders_list = result.scalars().all()
+
+    users_result = await session.execute(select(User))
+    users_map = {str(u.id): u.email for u in users_result.scalars().all()}
+
+    enriched = []
+    for f in folders_list:
+        d = folder_to_dict(f)
+        d["requested_by_email"] = users_map.get(f.requested_by or "")
+        if f.parentId:
+            parent_result = await session.execute(select(Folder).where(Folder.id == f.parentId))
+            parent = parent_result.scalar_one_or_none()
+            d["parent_name"] = parent.name if parent else None
+        else:
+            d["parent_name"] = None
+        enriched.append(d)
+    return enriched
+
+
+@app.post("/api/admin/folders/{folder_id}/approve")
+async def admin_approve_folder(
+    folder_id: str,
+    payload: ApproveFolderPayload,
+    session: AsyncSession = Depends(get_async_session),
+    _user: User = Depends(current_admin_user),
+):
+    result = await session.execute(select(Folder).where(Folder.id == folder_id))
+    folder = result.scalar_one_or_none()
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    values: dict = {"status": "approved"}
+    if payload.name and payload.name.strip():
+        values["name"] = payload.name.strip()
+
+    await session.execute(update(Folder).where(Folder.id == folder_id).values(**values))
+    await session.commit()
+    result = await session.execute(select(Folder).where(Folder.id == folder_id))
+    return folder_to_dict(result.scalar_one())
+
+
+@app.post("/api/admin/folders/{folder_id}/deny")
+async def admin_deny_folder(
+    folder_id: str,
+    payload: DenyPayload,
+    session: AsyncSession = Depends(get_async_session),
+    _user: User = Depends(current_admin_user),
+):
+    result = await session.execute(select(Folder).where(Folder.id == folder_id))
+    folder = result.scalar_one_or_none()
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    denial_reason = f"Folder '{folder.name}' was not approved"
+    if payload.reason:
+        denial_reason += f": {payload.reason}"
+
+    # Deny all models in the folder and delete their files
+    models_result = await session.execute(
+        select(STLModel).where(STLModel.folderId == folder_id)
+    )
+    for m in models_result.scalars().all():
+        for fname in os.listdir(UPLOAD_DIR):
+            if fname.startswith(m.id):
+                try:
+                    os.remove(os.path.join(UPLOAD_DIR, fname))
+                except Exception:
+                    pass
+        await session.execute(
+            update(STLModel)
+            .where(STLModel.id == m.id)
+            .values(status="denied", denial_reason=denial_reason)
+        )
+
+    await session.execute(delete(Folder).where(Folder.id == folder_id))
+    await session.commit()
+    return {"ok": True}
 
 
 # --- Printables import ---

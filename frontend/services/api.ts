@@ -278,6 +278,34 @@ export const api = {
     return res.json();
   },
 
+  // 20. ADMIN: get pending folder requests
+  getPendingFolders: async (): Promise<(Folder & { requested_by_email?: string; parent_name?: string | null })[]> => {
+    const res = await authFetch(`${API_BASE_URL}/admin/pending-folders`);
+    if (!res.ok) throw new Error("Failed to fetch pending folders");
+    return res.json();
+  },
+
+  // 21. ADMIN: approve a folder (optionally rename)
+  approveFolder: async (id: string, name?: string): Promise<Folder> => {
+    const res = await authFetch(`${API_BASE_URL}/admin/folders/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name ?? null }),
+    });
+    if (!res.ok) throw new Error("Approve failed");
+    return res.json();
+  },
+
+  // 22. ADMIN: deny a folder request
+  denyFolder: async (id: string, reason?: string): Promise<void> => {
+    const res = await authFetch(`${API_BASE_URL}/admin/folders/${id}/deny`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason ?? "" }),
+    });
+    if (!res.ok) throw new Error("Deny failed");
+  },
+
   // 19. ADMIN: deny a model
   denyModel: async (id: string, reason: string): Promise<STLModel> => {
     const res = await authFetch(`${API_BASE_URL}/admin/models/${id}/deny`, {
