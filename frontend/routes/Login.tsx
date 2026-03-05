@@ -32,31 +32,31 @@ const Login: React.FC = () => {
   };
 
   return (
+    <>
+    <div
+    className="absolute inset-0 bg-cover bg-center bg-[url(assets/stlvault-background.png)] blur-sm"
+    >
+    </div>
+    <div
+    className="bg-black/60 absolute inset-0 bg-colver bg-center "
+    >
+
+    </div>
     <Box
+      className="relative z-10"
       sx={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: "background.default",
       }}
-    >
+      >
       <Box
         component="form"
+        className="flex flex-col bg-black w-full max-w-[400px] p-4 rounded-sm border border-divider gap-2"
         onSubmit={handleSubmit}
-        sx={{
-          width: "100%",
-          maxWidth: 400,
-          p: 4,
-          bgcolor: "background.paper",
-          borderRadius: 2,
-          border: 1,
-          borderColor: "divider",
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
+        
+        >
         <Typography variant="h5" fontWeight={700} textAlign="center">
           {APP_NAME.short}
         </Typography>
@@ -77,7 +77,7 @@ const Login: React.FC = () => {
           fullWidth
           autoComplete="email"
           autoFocus
-        />
+          />
 
         <TextField
           label="Password"
@@ -87,7 +87,7 @@ const Login: React.FC = () => {
           required
           fullWidth
           autoComplete="current-password"
-        />
+          />
 
         <Button
           type="submit"
@@ -95,7 +95,7 @@ const Login: React.FC = () => {
           disabled={loading}
           fullWidth
           sx={{ mt: 1 }}
-        >
+          >
           {loading ? <CircularProgress size={22} color="inherit" /> : "Sign In"}
         </Button>
 
@@ -113,6 +113,7 @@ const Login: React.FC = () => {
         </Box>
       </Box>
     </Box>
+          </>
   );
 };
 
