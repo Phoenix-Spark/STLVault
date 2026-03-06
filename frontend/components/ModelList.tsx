@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { STLModel, Folder } from "../types";
 import { api } from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
 
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -94,6 +95,7 @@ const ModelList: React.FC<ModelListProps> = ({
   onMoveToFolder,
   onUploadToFolder,
 }) => {
+  const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -284,7 +286,7 @@ const ModelList: React.FC<ModelListProps> = ({
 
           <div className="flex flex-wrap gap-3">
             <Stack direction="row" spacing={2}>
-              <Button
+              {/* <Button
                 variant="outlined"
                 startIcon={<CheckSquare />}
                 onClick={() => onSelectAll(processedModels)}
@@ -294,7 +296,7 @@ const ModelList: React.FC<ModelListProps> = ({
                     ? "Unselect All"
                     : "Select All"
                 } `}
-              </Button>
+              </Button> */}
               <Button
                 variant="contained"
                 startIcon={<Globe />}
@@ -717,18 +719,21 @@ const ModelList: React.FC<ModelListProps> = ({
                           >
                             Open
                           </MenuItem>
-                          <Divider />
-                          <MenuItem
-                            sx={{ color: "#dd3434ff" }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Call delete FIRST to ensure propagation isn't cut off by component unmounting if list updates
-                              onDelete(model.id);
-                              setActiveMenuModelId(null);
-                            }}
-                          >
-                            Delete
-                          </MenuItem>
+                          {(user?.is_superuser || model.uploaded_by === user?.id) && (
+                            <>
+                              <Divider />
+                              <MenuItem
+                                sx={{ color: "#dd3434ff" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDelete(model.id);
+                                  setActiveMenuModelId(null);
+                                }}
+                                >
+                                Delete
+                              </MenuItem>
+                            </>
+                          )}
                         </Menu>
                       </div>
                     </CardActions>

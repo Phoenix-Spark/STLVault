@@ -4,7 +4,6 @@ import {
   Folder as FolderIcon,
   Plus,
   Box,
-  LayoutGrid,
   Pencil,
   Trash2,
   Check,
@@ -38,8 +37,6 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import Badge from "@mui/material/Badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { APP_NAME } from "@/contexts/constants";
-
-const APP_TAG = import.meta.env.VITE_APP_TAG || "dev";
 
 interface SidebarProps {
   folders: Folder[];
@@ -293,7 +290,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               size="small"
               sx={{ color: "grey.300" }}
             >
-              <PlusIcon />
+              <PlusIcon className="hover:text-green-400"/>
             </IconButton>
             <IconButton
               onClick={onClick}
@@ -302,7 +299,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               edge="end"
               sx={{ color: "grey.300" }}
             >
-              <Trash2 />
+              <Trash2 className="hover:text-red-500"/>
             </IconButton>
           </Stack>
         )}
@@ -372,35 +369,23 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <Container
       disableGutters
-      sx={{ bgcolor: "common.black" }}
+      sx={{ bgcolor: "background.default" }}
       className="border-r border-vault-700 flex flex-col h-full select-none relative shrink-0 group/sidebar mr-6"
       style={isDesktopVariant ? { width } : undefined}
       onDragLeave={() => setDragTargetId(null)}
     >
-      <div className="p-6 flex items-center gap-3">
-        <Stack
-          direction="row"
-          gap={1}
-          sx={{
-            justifyContent: "flex-start",
-            alignItems: "baseline",
-            minWidth: 0,
-          }}
-        >
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20 shrink-0 pt-1">
-            <Box className="w-5 h-5 text-white pb-1" />
-          </div>
-          <Typography noWrap variant="h4">
+      <div className="px-4 py-5 flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/30 shrink-0">
+          <Box className="w-6 h-6 text-white" />
+        </div>
+        <div className="min-w-0">
+          <Typography variant="h5" fontWeight={700} noWrap>
             {APP_NAME.short}
           </Typography>
-          <Typography
-            noWrap
-            variant="subtitle2"
-            sx={{ color: "text.secondary" }}
-          >
-            v{APP_TAG}
+          <Typography variant="caption" sx={{ color: "text.secondary" }} noWrap>
+            {APP_NAME.full}
           </Typography>
-        </Stack>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 space-y-0.5 scrollbar-thin scrollbar-thumb-vault-700 scrollbar-track-transparent overflow-y-scroll">
@@ -449,19 +434,16 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </form>
 
-        <Button
-          variant="contained"
-          startIcon={<LayoutGrid />}
+        <div
+          // startIcon={<LayoutGrid />}
           color={currentFolderId === "all" ? "info" : "primary"}
-          onClick={() => onSelectFolder("all")}
-          endIcon={
-            <Badge badgeContent={models.length} className="mr-2"></Badge>
-          }
-          className="w-full"
-          sx={{ alignItems: "center", justifyContent: "space-between" }}
+      
+          className="w-full rounded-md bg-vault-700/50 flex justify-between items-center p-2 px-4"
+          // sx={{ alignItems: "center", justifyContent: "space-between" }}
         >
           All Models
-        </Button>
+          <Badge badgeContent={models.filter((m) => m.status === "approved").length} className="mr-2"></Badge>
+        </div>
 
         <div className="pt-2 pb-1 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider flex justify-between items-center">
           <Typography variant="subtitle1">Library</Typography>
@@ -473,8 +455,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             slots={{ item: CustomTreeItem }}
             expansionTrigger="iconContainer"
             onItemExpansionToggle={handleExpand}
-            isItemEditable
-            onItemLabelChange={(itemId, label) => onRenameFolder(itemId, label)}
           />
         </div>
       </nav>

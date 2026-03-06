@@ -206,15 +206,7 @@ const Dashboard: React.FC = () => {
 
         {!loading && !error && models.length === 0 && (
           <Box
-            sx={{
-              textAlign: "center",
-              py: 8,
-              color: "text.secondary",
-              border: 1,
-              borderColor: "divider",
-              borderRadius: 2,
-              borderStyle: "dashed",
-            }}
+            className="flex flex-col text-center items-center justify-center border border-dashed border-white/10 py-8 rounded-lg"
           >
             <BoxIcon size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
             <Typography variant="body1">No models uploaded yet</Typography>

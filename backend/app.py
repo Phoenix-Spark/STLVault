@@ -170,6 +170,7 @@ def model_to_dict(m: STLModel) -> dict:
         "thumbnail": m.thumbnail,
         "status": m.status or "approved",
         "denial_reason": m.denial_reason,
+        "uploaded_by": m.uploaded_by,
     }
 
 
@@ -309,6 +310,7 @@ async def upload_model(
     folderId: str = Form("1"),
     thumbnail: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_verified_user),
 ):
@@ -337,7 +339,7 @@ async def upload_model(
         size=size,
         dateAdded=now_ms(),
         tags=json.dumps(tag_list),
-        description="",
+        description=description or "",
         thumbnail=thumbnail,
         uploaded_by=str(user.id),
         status="pending",
@@ -396,11 +398,14 @@ async def update_model(
 async def delete_model(
     model_id: str,
     session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(current_active_verified_user),
+    user: User = Depends(current_active_verified_user),
 ):
     result = await session.execute(select(STLModel).where(STLModel.id == model_id))
-    if not result.scalar_one_or_none():
+    m = result.scalar_one_or_none()
+    if not m:
         raise HTTPException(status_code=404, detail="Model not found")
+    if not user.is_superuser and m.uploaded_by != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to delete this model")
 
     for fname in os.listdir(UPLOAD_DIR):
         if fname.startswith(model_id):
@@ -434,9 +439,15 @@ async def download_model(
 async def bulk_delete(
     payload: BulkDeletePayload,
     session: AsyncSession = Depends(get_async_session),
-    _user: User = Depends(current_active_verified_user),
+    user: User = Depends(current_active_verified_user),
 ):
     for mid in payload.ids:
+        result = await session.execute(select(STLModel).where(STLModel.id == mid))
+        m = result.scalar_one_or_none()
+        if not m:
+            continue
+        if not user.is_superuser and m.uploaded_by != str(user.id):
+            continue
         for fname in os.listdir(UPLOAD_DIR):
             if fname.startswith(mid):
                 try:
@@ -636,7 +647,7 @@ async def admin_deny_model(
     await session.execute(
         update(STLModel)
         .where(STLModel.id == model_id)
-        .values(status="denied", denial_reason=payload.reason or None)
+        .values(status="denied", denial_reason=payload.reason or None, folderId="")
     )
     await session.commit()
 

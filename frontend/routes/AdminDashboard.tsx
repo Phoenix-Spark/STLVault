@@ -6,6 +6,7 @@ import Viewer3D from "../components/Viewer3D";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -16,7 +17,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { CheckCircle, XCircle, Box as BoxIcon, Clock, FolderOpen } from "lucide-react";
+import { CheckCircle, XCircle, Box as BoxIcon, Clock, FolderOpen, RefreshCw } from "lucide-react";
 
 type PendingFolder = Folder & { requested_by_email?: string; parent_name?: string | null };
 
@@ -59,7 +60,12 @@ const AdminDashboard: React.FC = () => {
   const [folderDenyReason, setFolderDenyReason] = useState("");
   const [folderActionLoading, setFolderActionLoading] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true);
+    setFoldersLoading(true);
+    setError("");
+    setFolderError("");
+
     api
       .getAdminPending()
       .then(setPending)
@@ -71,16 +77,20 @@ const AdminDashboard: React.FC = () => {
     api
       .getPendingFolders()
       .then((data) => {
+        console.log("[AdminDashboard] pending folders response:", data);
         setPendingFolders(data);
         const names: Record<string, string> = {};
         data.forEach((f) => { names[f.id] = f.name; });
         setApproveNames(names);
       })
-      .catch((e: unknown) =>
-        setFolderError(e instanceof Error ? e.message : "Failed to load pending folders")
-      )
+      .catch((e: unknown) => {
+        console.error("[AdminDashboard] pending folders error:", e);
+        setFolderError(e instanceof Error ? e.message : "Failed to load pending folders");
+      })
       .finally(() => setFoldersLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const removeFromList = (id: string) => {
     setPending((prev) => prev.filter((m) => m.id !== id));
@@ -148,10 +158,10 @@ const AdminDashboard: React.FC = () => {
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", bgcolor: "background.default" }}>
       <Navbar showMenuButton={false} />
 
-      {error && (
+      {(error || folderError) && (
         <Box sx={{ px: 3, py: 1, bgcolor: "error.dark" }}>
           <Typography variant="body2" color="error.contrastText">
-            {error}
+            {error || folderError}
           </Typography>
         </Box>
       )}
@@ -168,11 +178,12 @@ const AdminDashboard: React.FC = () => {
             flexDirection: "column",
           }}
         >
+          <Box sx={{ display: "flex", alignItems: "center", borderBottom: 1, borderColor: "divider", flexShrink: 0 }}>
           <Tabs
             value={tab}
             onChange={(_e, v) => setTab(v)}
             variant="fullWidth"
-            sx={{ borderBottom: 1, borderColor: "divider", flexShrink: 0 }}
+            sx={{ flex: 1 }}
           >
             <Tab
               label={
@@ -197,6 +208,10 @@ const AdminDashboard: React.FC = () => {
               value="folders"
             />
           </Tabs>
+          <IconButton onClick={loadData} size="small" sx={{ mx: 0.5 }} title="Refresh">
+            <RefreshCw size={16} />
+          </IconButton>
+          </Box>
 
           <Box sx={{ flex: 1, overflowY: "auto" }}>
           {/* Models tab */}

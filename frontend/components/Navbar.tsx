@@ -46,7 +46,7 @@ const Navbar: React.FC<NavbarProps> = ({
 			)}
 
 			<div className="min-w-0 flex-1">
-				<div className="text-sm font-semibold text-white truncate">{title}</div>
+				<div className="text-base font-bold text-white truncate tracking-wide">{title}</div>
 				{subtitle && <div className="text-xs text-slate-400 truncate">{subtitle}</div>}
 			</div>
 
@@ -63,7 +63,7 @@ const Navbar: React.FC<NavbarProps> = ({
 						<span className="w-5 h-5 flex items-center justify-center flex-shrink-0 transition-all duration-200 ease-in-out group-hover:w-0 group-hover:opacity-0 overflow-hidden">
 							<Icon className="w-5 h-5 flex-shrink-0" />
 						</span>
-						<span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out group-hover:max-w-[8rem] group-hover:opacity-100">
+						<span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out group-hover:max-w-[9rem] group-hover:opacity-100">
 							{item.label}
 						</span>
 					</button>

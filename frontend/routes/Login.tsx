@@ -34,14 +34,15 @@ const Login: React.FC = () => {
   return (
     <>
     <div
-    className="absolute inset-0 bg-cover bg-center bg-[url(assets/stlvault-background.png)] blur-sm"
-    >
-    </div>
+      className="absolute inset-0 bg-cover bg-center bg-[url(assets/stlvault-background.png)] blur-sm"
+    />
     <div
-    className="bg-black/60 absolute inset-0 bg-colver bg-center "
-    >
-
-    </div>
+      className="absolute inset-0 bg-cover bg-center bg-black/60"
+    />
+    <div
+      className="absolute inset-0"
+      style={{ background: "radial-gradient(ellipse at center, transparent 10%, black 80%)" }}
+    />
     <Box
       className="relative z-10"
       sx={{
@@ -50,10 +51,10 @@ const Login: React.FC = () => {
         alignItems: "center",
         justifyContent: "center",
       }}
-      >
+    >
       <Box
         component="form"
-        className="flex flex-col bg-black w-full max-w-[400px] p-4 rounded-sm border border-divider gap-2"
+        className="flex flex-col bg-black backdrop-blur-sm w-full max-w-[400px] p-8 rounded-md border-2 border-vault-700 gap-4 "
         onSubmit={handleSubmit}
         
         >

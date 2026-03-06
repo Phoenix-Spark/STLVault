@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from "react";
-import { STLModel } from "../types";
+import { STLModel, Folder } from "../types";
 import Viewer3D from "./Viewer3D";
 import {
   X,
@@ -31,6 +31,7 @@ import Grid from "@mui/material/Grid";
 
 interface DetailPanelProps {
   model: STLModel | null;
+  folders: Folder[];
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<STLModel>) => void;
   onDelete: (id: string) => void;
@@ -38,6 +39,7 @@ interface DetailPanelProps {
 
 const DetailPanel: React.FC<DetailPanelProps> = ({
   model,
+  folders,
   onClose,
   onUpdate,
   onDelete,
@@ -193,8 +195,20 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
     setIsEditing(false);
   };
 
+  const getPath = (folderId: string): string => {
+    const parts: string[] = [];
+    let current: string | null = folderId;
+    while (current) {
+      const folder = folders.find((f) => f.id === current);
+      if (!folder) break;
+      parts.unshift(folder.name);
+      current = folder.parentId;
+    }
+    return parts.join(" / ") || "Unknown";
+  };
+
   return (
-    <div className="w-screen sm:w-96 border-l border-vault-700 bg-black flex flex-col h-full shadow-2xl z-20 relative">
+    <div className="w-screen sm:w-96 border-l border-vault-700 bg-vault-900 flex flex-col h-full shadow-2xl z-20 relative">
       {/* Header */}
 
       <div className="p-4 border-b border-vault-700 flex justify-between items-center">
@@ -268,10 +282,11 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             )}
           </div>
 
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Filename: <br></br>
-            {model.id}.{model.name.split(".").pop()}
-          </Typography>
+          <div>
+            <Typography variant="h7">Location</Typography>
+            <Typography variant="body2" sx={{color: "text.secondary"}}>{getPath(model.folderId)}</Typography>
+          </div>
+
           <Divider />
           <div>
             <Typography variant="body1" gutterBottom>

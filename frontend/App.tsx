@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "./contexts/AuthContext";
 import Sidebar from "./components/Sidebar";
 import ModelList from "./components/ModelList";
 import DetailPanel from "./components/DetailPanel";
@@ -15,6 +16,8 @@ import {
   Download,
   FileUp,
   Globe,
+  ChevronRight,
+  Folder as FolderIcon,
 } from "lucide-react";
 import JSZip from "jszip";
 import { useMediaQuery } from "./hooks/useMediaQuery";
@@ -24,6 +27,7 @@ import Alert from "@mui/material/Alert";
 import { APP_NAME } from "./contexts/constants";
 
 const App = () => {
+  const { user } = useAuth();
   const isDesktop = useMediaQuery("(min-width: 1024px)", true);
   const isMobile = !isDesktop;
   const visualViewport = useVisualViewport();
@@ -54,11 +58,11 @@ const App = () => {
   // Upload Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [uploadFolderId, setUploadFolderId] = useState("");
+  const [browseFolderId, setBrowseFolderId] = useState<string | null>(null);
   const [uploadTags, setUploadTags] = useState("");
+  const [uploadDescription, setUploadDescription] = useState("");
   const [uploadMode, setUploadMode] = useState<"existing" | "new">("existing");
   const [newFolderName, setNewFolderName] = useState("");
-  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
 
   // Import Modal State
   const [showImportModal, setShowImportModal] = useState(false);
@@ -225,6 +229,7 @@ const App = () => {
     files: File[],
     targetFolderId: string,
     tags: string[],
+    description: string = "",
   ) => {
     setUploadQueue((prev) => prev + files.length);
 
@@ -244,6 +249,7 @@ const App = () => {
           targetFolderId,
           thumbnail,
           tags,
+          description,
         );
         setModels((prev) => [newModel, ...prev]);
         if (newModel.status === "pending") {
@@ -267,13 +273,11 @@ const App = () => {
     // We want to show the modal to let user pick a folder and add tags
     if (!specificFolderId && currentFolderId === "all") {
       setPendingFiles(files);
-      // Default to first approved folder if available
-      const approvedFolders = folders.filter((f) => f.status !== "pending");
-      setUploadFolderId(approvedFolders.length > 0 ? approvedFolders[0].id : "");
+      setBrowseFolderId(null);
       setUploadTags("");
+      setUploadDescription("");
       setUploadMode("existing");
       setNewFolderName("");
-      setNewFolderParentId(null);
       setShowUploadModal(true);
       return;
     }
@@ -293,14 +297,14 @@ const App = () => {
   const handleConfirmUpload = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    let targetFolderId = uploadFolderId;
+    let targetFolderId = browseFolderId ?? "";
 
     if (uploadMode === "new") {
       if (!newFolderName.trim()) return;
       try {
-        const newFolder = await api.createFolder(newFolderName.trim(), newFolderParentId);
-        setFolders((prev) => [...prev, newFolder]);
+        const newFolder = await api.createFolder(newFolderName.trim(), browseFolderId);
         targetFolderId = newFolder.id;
+        // Don't add pending folder to state — it won't appear until an admin approves it
       } catch (err) {
         console.error("Failed to request folder", err);
         return;
@@ -314,7 +318,7 @@ const App = () => {
       .map((t) => t.trim())
       .filter(Boolean);
     setShowUploadModal(false);
-    await executeUpload(pendingFiles, targetFolderId, tags);
+    await executeUpload(pendingFiles, targetFolderId, tags, uploadDescription);
     setPendingFiles([]);
   };
 
@@ -561,8 +565,6 @@ const App = () => {
 
       // Generate zip
       const content = await zip.generateAsync({ type: "blob" });
-      const saveUrl = URL.createObjectURL(content);
-
       // Trigger download
       const link = document.createElement("a");
       link.href = saveUrl;
@@ -717,6 +719,7 @@ const App = () => {
               >
                 <DetailPanel
                   model={selectedModel}
+                  folders={folders}
                   onClose={() => setSelectedModelId(null)}
                   onUpdate={handleUpdateModel}
                   onDelete={handleDeleteModel}
@@ -776,16 +779,18 @@ const App = () => {
                       </span>
                     </button>
 
-                    <button
-                      onClick={handleBulkDelete}
-                      className="p-2 rounded-full hover:bg-vault-700 text-slate-300 hover:text-red-400 transition-colors flex items-center gap-2"
-                      title="Delete Selected"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="text-sm font-medium hidden sm:inline">
-                        Delete
-                      </span>
-                    </button>
+                    {(user?.is_superuser || Array.from(selectedIds).some(id => models.find(m => m.id === id)?.uploaded_by === user?.id)) && (
+                      <button
+                        onClick={handleBulkDelete}
+                        className="p-2 rounded-full hover:bg-vault-700 text-slate-300 hover:text-red-400 transition-colors flex items-center gap-2"
+                        title="Delete Selected"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="text-sm font-medium hidden sm:inline">
+                          Delete
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -862,57 +867,117 @@ const App = () => {
                           </button>
                         </div>
 
-                        {uploadMode === "existing" ? (
-                          <select
-                            className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none"
-                            value={uploadFolderId}
-                            onChange={(e) => setUploadFolderId(e.target.value)}
-                          >
-                            <option value="" disabled>
-                              Select a folder...
-                            </option>
-                            {folders
-                              .filter((f) => f.status !== "pending")
-                              .map((folder) => (
-                                <option key={folder.id} value={folder.id}>
-                                  {folder.name}
-                                </option>
-                              ))}
-                          </select>
-                        ) : (
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none placeholder:text-slate-600"
-                              placeholder="Folder name..."
-                              value={newFolderName}
-                              onChange={(e) => setNewFolderName(e.target.value)}
-                              autoFocus
-                            />
-                            <select
-                              className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none"
-                              value={newFolderParentId ?? ""}
-                              onChange={(e) => setNewFolderParentId(e.target.value || null)}
-                            >
-                              <option value="">Root level</option>
-                              {folders
-                                .filter((f) => f.status !== "pending")
-                                .map((folder) => (
-                                  <option key={folder.id} value={folder.id}>
-                                    {folder.name}
-                                  </option>
-                                ))}
-                            </select>
-                            <p className="text-xs text-amber-400">
-                              This folder will be reviewed by an admin before it appears in the vault.
-                            </p>
-                          </div>
+                        {uploadMode === "new" && (
+                          <input
+                            type="text"
+                            className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none placeholder:text-slate-600 mb-2"
+                            placeholder="New folder name..."
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            autoFocus
+                          />
                         )}
+
+                        {/* Breadcrumb folder browser */}
+                        {(() => {
+                          const approved = folders.filter((f) => f.status !== "pending");
+                          const path: Folder[] = [];
+                          let cur: string | null = browseFolderId;
+                          while (cur) {
+                            const f = folders.find((x) => x.id === cur);
+                            if (!f) break;
+                            path.unshift(f);
+                            cur = f.parentId ?? null;
+                          }
+                          const children = approved
+                            .filter((f) => f.parentId === browseFolderId)
+                            .sort((a, b) => a.name.localeCompare(b.name));
+                          return (
+                            <div className="border border-vault-700 rounded-md overflow-hidden text-sm">
+                              {/* Breadcrumb bar */}
+                              <div className="flex items-center gap-0.5 px-2 py-1.5 bg-vault-900/50 border-b border-vault-700 flex-wrap min-h-[34px]">
+                                <button
+                                  type="button"
+                                  onClick={() => setBrowseFolderId(null)}
+                                  className={`px-1 rounded hover:text-white transition-colors ${
+                                    !browseFolderId
+                                      ? uploadMode === "new" ? "text-white font-medium" : "text-slate-400"
+                                      : "text-blue-400"
+                                  }`}
+                                >
+                                  Root
+                                </button>
+                                {path.map((f) => (
+                                  <React.Fragment key={f.id}>
+                                    <ChevronRight className="w-3 h-3 text-slate-600 flex-shrink-0" />
+                                    <button
+                                      type="button"
+                                      onClick={() => setBrowseFolderId(f.id)}
+                                      className={`px-1 rounded hover:text-white transition-colors ${
+                                        browseFolderId === f.id ? "text-white font-medium" : "text-blue-400"
+                                      }`}
+                                    >
+                                      {f.name}
+                                    </button>
+                                  </React.Fragment>
+                                ))}
+                                {uploadMode === "existing" && !browseFolderId && (
+                                  <span className="text-slate-500 text-xs italic ml-1">— select a folder below</span>
+                                )}
+                              </div>
+                              {/* Child folders */}
+                              <div className="max-h-36 overflow-y-auto">
+                                {children.length === 0 ? (
+                                  <div className="px-3 py-2.5 text-slate-500 italic">No subfolders</div>
+                                ) : (
+                                  children.map((f) => (
+                                    <button
+                                      key={f.id}
+                                      type="button"
+                                      onClick={() => setBrowseFolderId(f.id)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-vault-700/40 transition-colors border-b border-vault-700/20 last:border-0 text-slate-300"
+                                    >
+                                      <FolderIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                                      <span className="flex-1 truncate">{f.name}</span>
+                                      <ChevronRight className="w-3 h-3 text-slate-600" />
+                                    </button>
+                                  ))
+                                )}
+                                {uploadMode === "new" && <div
+                                  key={1}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-vault-700/40 transition-colors border-b border-vault-700/20 last:border-0 text-slate-300"
+                                >
+                                  <FolderIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                                  <span className="text-yellow-400">{newFolderName.length > 0 ? newFolderName : "---"}</span>
+                                </div>}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {uploadMode === "new" && (
+                          <p className="text-xs text-white mt-1">
+                            This folder will be reviewed by an admin before it appears in the vault.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-400 mb-1">
+                          Description (Optional)
+                        </label>
+                        <textarea
+                          className="w-full bg-vault-900 border border-vault-700 rounded-md px-3 py-2 text-white focus:border-blue-500 outline-none placeholder:text-slate-600 resize-none"
+                          placeholder="What is this model? Any relevant notes..."
+                          rows={3}
+                          value={uploadDescription}
+                          onChange={(e) => setUploadDescription(e.target.value)}
+                        />
                       </div>
 
                       <div className="mb-6">
                         <label className="block text-sm font-medium text-slate-400 mb-1">
-                          Add Tags (Optional)
+                          Tags (Optional)
                         </label>
                         <input
                           type="text"
@@ -936,7 +1001,7 @@ const App = () => {
                         </button>
                         <button
                           type="submit"
-                          disabled={uploadMode === "existing" ? !uploadFolderId : !newFolderName.trim()}
+                          disabled={uploadMode === "existing" ? !browseFolderId : !newFolderName.trim()}
                           className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Upload

@@ -32,6 +32,7 @@ export interface STLModel {
   thumbnail?: string;
   status?: "pending" | "approved" | "denied";
   denial_reason?: string | null;
+  uploaded_by?: string | null;
   uploaded_by_email?: string | null;
 }
 

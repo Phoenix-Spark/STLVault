@@ -21,7 +21,7 @@ export const NAV_OPTIONS: NavOption[] = [
     },
     {
         link: "/dashboard",
-        label: "Dashboard",
+        label: "My Dashboard",
         icon: LayoutDashboard
     },
     {
