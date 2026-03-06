@@ -54,7 +54,7 @@ const Login: React.FC = () => {
     >
       <Box
         component="form"
-        className="flex flex-col bg-black backdrop-blur-sm w-full max-w-[400px] p-8 rounded-md border-2 border-vault-700 gap-4 "
+        className="flex flex-col bg-vault-800 backdrop-blur-sm w-full max-w-[400px] p-8 rounded-xl border-2 border-vault-700 gap-4 "
         onSubmit={handleSubmit}
         
         >

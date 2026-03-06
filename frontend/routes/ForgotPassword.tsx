@@ -22,13 +22,24 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
+    <>
+    <div
+      className="absolute inset-0 bg-cover bg-center bg-[url(assets/stlvault-background.png)] blur-sm"
+    />
+    <div
+      className="absolute inset-0 bg-cover bg-center bg-black/60"
+    />
+    <div
+      className="absolute inset-0"
+      style={{ background: "radial-gradient(ellipse at center, transparent 10%, black 80%)" }}
+    />
     <Box
+      className="relative z-10"
       sx={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: "background.default",
       }}
     >
       <Box
@@ -46,7 +57,7 @@ const ForgotPassword: React.FC = () => {
           flexDirection: "column",
           gap: 2,
         }}
-      >
+        >
         <Typography variant="h5" fontWeight={700} textAlign="center">
           Reset Password
         </Typography>
@@ -77,7 +88,7 @@ const ForgotPassword: React.FC = () => {
               required
               fullWidth
               autoFocus
-            />
+              />
 
             <Button type="submit" variant="contained" disabled={loading} fullWidth>
               {loading ? <CircularProgress size={22} color="inherit" /> : "Send Reset Link"}
@@ -92,6 +103,7 @@ const ForgotPassword: React.FC = () => {
         )}
       </Box>
     </Box>
+        </>
   );
 };
 

@@ -96,31 +96,31 @@ const Register: React.FC = () => {
   }
 
   return (
+    <>
+     <div
+      className="absolute inset-0 bg-cover bg-center bg-[url(assets/stlvault-background.png)] blur-sm"
+    />
+    <div
+      className="absolute inset-0 bg-cover bg-center bg-black/60"
+    />
+    <div
+      className="absolute inset-0"
+      style={{ background: "radial-gradient(ellipse at center, transparent 10%, black 80%)" }}
+    />
     <Box
+      className="relative z-10"
       sx={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: "background.default",
       }}
     >
       <Box
         component="form"
         onSubmit={handleSubmit}
-        sx={{
-          width: "100%",
-          maxWidth: 400,
-          p: 4,
-          bgcolor: "background.paper",
-          borderRadius: 2,
-          border: 1,
-          borderColor: "divider",
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
+        className="flex flex-col bg-vault-800 backdrop-blur-sm w-full max-w-[400px] p-8 rounded-xl border-2 border-vault-700 gap-4 "
+        >
         <Typography variant="h5" fontWeight={700} textAlign="center">
           Create Account
         </Typography>
@@ -140,7 +140,7 @@ const Register: React.FC = () => {
           fullWidth
           autoComplete="email"
           autoFocus
-        />
+          />
 
         <TextField
           label="Password"
@@ -151,7 +151,7 @@ const Register: React.FC = () => {
           required
           fullWidth
           autoComplete="new-password"
-        />
+          />
 
         <TextField
           label="Confirm Password"
@@ -161,7 +161,7 @@ const Register: React.FC = () => {
           required
           fullWidth
           autoComplete="new-password"
-        />
+          />
 
         <Button
           type="submit"
@@ -169,7 +169,7 @@ const Register: React.FC = () => {
           disabled={loading}
           fullWidth
           sx={{ mt: 1 }}
-        >
+          >
           {loading ? <CircularProgress size={22} color="inherit" /> : "Create Account"}
         </Button>
 
@@ -181,6 +181,7 @@ const Register: React.FC = () => {
         </Typography>
       </Box>
     </Box>
+    </>
   );
 };
 
