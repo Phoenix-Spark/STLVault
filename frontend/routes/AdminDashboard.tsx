@@ -17,7 +17,9 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { CheckCircle, XCircle, Box as BoxIcon, Clock, FolderOpen, RefreshCw } from "lucide-react";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
+import { CheckCircle, XCircle, Box as BoxIcon, Clock, FolderOpen, RefreshCw, ArrowLeft } from "lucide-react";
 
 type PendingFolder = Folder & { requested_by_email?: string; parent_name?: string | null };
 
@@ -38,6 +40,9 @@ const formatDate = (ms: number): string =>
   });
 
 const AdminDashboard: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const [tab, setTab] = useState<"models" | "folders">("models");
 
   // Pending models state
@@ -154,12 +159,323 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // On mobile: show detail panel when something is selected
+  const showDetail = !!selected;
+  const showList = !isMobile || !showDetail;
+
+  // --- List panel ---
+  const listPanel = (
+    <Box
+      sx={{
+        width: isMobile ? "100%" : 320,
+        flexShrink: 0,
+        borderRight: isMobile ? 0 : 1,
+        borderColor: "divider",
+        display: showList ? "flex" : "none",
+        flexDirection: "column",
+        height: "100%",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", borderBottom: 1, borderColor: "divider", flexShrink: 0 }}>
+        <Tabs
+          value={tab}
+          onChange={(_e, v) => setTab(v)}
+          variant="fullWidth"
+          sx={{ flex: 1 }}
+        >
+          <Tab
+            label={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                Models
+                {pending.length > 0 && (
+                  <Chip label={pending.length} size="small" color="warning" />
+                )}
+              </Box>
+            }
+            value="models"
+          />
+          <Tab
+            label={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                Folders
+                {pendingFolders.length > 0 && (
+                  <Chip label={pendingFolders.length} size="small" color="warning" />
+                )}
+              </Box>
+            }
+            value="folders"
+          />
+        </Tabs>
+        <IconButton onClick={loadData} size="small" sx={{ mx: 0.5 }} title="Refresh">
+          <RefreshCw size={16} />
+        </IconButton>
+      </Box>
+
+      <Box sx={{ flex: 1, overflowY: "auto" }}>
+        {/* Models tab */}
+        {tab === "models" && (
+          <>
+            {loading && (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
+            {!loading && pending.length === 0 && (
+              <Box sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
+                <CheckCircle size={36} style={{ opacity: 0.3, marginBottom: 8 }} />
+                <Typography variant="body2">No pending uploads</Typography>
+              </Box>
+            )}
+            {pending.map((m) => (
+              <Box
+                key={m.id}
+                onClick={() => setSelected(m)}
+                sx={{
+                  display: "flex",
+                  gap: 1.5,
+                  p: 1.5,
+                  cursor: "pointer",
+                  borderBottom: 1,
+                  borderColor: "divider",
+                  bgcolor: selected?.id === m.id ? "action.selected" : "transparent",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    flexShrink: 0,
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    bgcolor: "action.hover",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {m.thumbnail ? (
+                    <img src={m.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <BoxIcon size={24} style={{ opacity: 0.4 }} />
+                  )}
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" fontWeight={600} noWrap title={m.name}>
+                    {m.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" noWrap>
+                    {m.uploaded_by_email ?? "Unknown user"}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {formatDate(m.dateAdded)}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </>
+        )}
+
+        {/* Folders tab */}
+        {tab === "folders" && (
+          <>
+            {foldersLoading && (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
+            {!foldersLoading && folderError && (
+              <Typography color="error" sx={{ p: 2 }}>{folderError}</Typography>
+            )}
+            {!foldersLoading && pendingFolders.length === 0 && (
+              <Box sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
+                <CheckCircle size={36} style={{ opacity: 0.3, marginBottom: 8 }} />
+                <Typography variant="body2">No pending folder requests</Typography>
+              </Box>
+            )}
+            {pendingFolders.map((f) => (
+              <Box key={f.id} sx={{ p: 1.5, borderBottom: 1, borderColor: "divider" }}>
+                <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start", mb: 1 }}>
+                  <FolderOpen size={20} style={{ marginTop: 2, opacity: 0.6, flexShrink: 0 }} />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="body2" fontWeight={600} noWrap>{f.name}</Typography>
+                    {f.parent_name && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Under: {f.parent_name}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary" display="block" noWrap>
+                      By: {f.requested_by_email ?? "Unknown"}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {approvingId === f.id ? (
+                  <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+                    <TextField
+                      size="small"
+                      value={approveNames[f.id] ?? f.name}
+                      onChange={(e) => setApproveNames((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                      placeholder="Folder name"
+                      fullWidth
+                      autoFocus
+                    />
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      onClick={() => handleApproveFolder(f)}
+                      disabled={folderActionLoading || !approveNames[f.id]?.trim()}
+                    >
+                      OK
+                    </Button>
+                    <Button size="small" onClick={() => setApprovingId(null)}>✕</Button>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="success"
+                      startIcon={<CheckCircle size={14} />}
+                      onClick={() => setApprovingId(f.id)}
+                      disabled={folderActionLoading}
+                      sx={{ flex: 1 }}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      startIcon={<XCircle size={14} />}
+                      onClick={() => { setFolderDenyTarget(f); setFolderDenyOpen(true); }}
+                      disabled={folderActionLoading}
+                      sx={{ flex: 1 }}
+                    >
+                      Deny
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            ))}
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+
+  // --- Detail panel ---
+  const detailPanel = selected ? (
+    <Box
+      sx={{
+        flex: 1,
+        display: (!isMobile || showDetail) ? "flex" : "none",
+        flexDirection: "column",
+        overflow: "hidden",
+        height: "100%",
+      }}
+    >
+      {/* Mobile back button */}
+      {isMobile && (
+        <Box sx={{ px: 1.5, py: 1, borderBottom: 1, borderColor: "divider", flexShrink: 0 }}>
+          <Button
+            startIcon={<ArrowLeft size={16} />}
+            onClick={() => setSelected(null)}
+            size="small"
+          >
+            Back to list
+          </Button>
+        </Box>
+      )}
+
+      {/* 3D viewer — fixed height on mobile, flex on desktop */}
+      <Box sx={{ height: isMobile ? 260 : undefined, flex: isMobile ? undefined : 1, minHeight: 0, flexShrink: 0 }}>
+        <Viewer3D
+          url={selected.url}
+          filename={selected.name}
+          thumbnail={selected.thumbnail}
+        />
+      </Box>
+
+      <Divider />
+
+      {/* Info + actions — scrollable */}
+      <Box sx={{ p: 2, overflowY: "auto", flex: isMobile ? 1 : undefined, flexShrink: 0 }}>
+        <Typography variant="h6" fontWeight={700} mb={0.5} noWrap title={selected.name}>
+          {selected.name}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mb={0.5}>
+          Submitted by: <strong>{selected.uploaded_by_email ?? "Unknown"}</strong>
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mb={1}>
+          {formatDate(selected.dateAdded)} &nbsp;·&nbsp; {formatSize(selected.size)}
+        </Typography>
+
+        {selected.tags && selected.tags.length > 0 && (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1 }}>
+            {selected.tags.map((t) => (
+              <Chip key={t} label={t} size="small" />
+            ))}
+          </Box>
+        )}
+
+        {selected.description && (
+          <Typography variant="body2" sx={{ mb: 1.5, whiteSpace: "pre-wrap", color: "text.secondary" }}>
+            {selected.description}
+          </Typography>
+        )}
+
+        <Box sx={{ display: "flex", gap: 1.5, mt: 1.5 }}>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircle size={16} />}
+            onClick={handleApprove}
+            disabled={actionLoading}
+            fullWidth
+          >
+            Approve
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            startIcon={<XCircle size={16} />}
+            onClick={() => setDenyOpen(true)}
+            disabled={actionLoading}
+            fullWidth
+          >
+            Deny
+          </Button>
+        </Box>
+      </Box>
+    </Box>
+  ) : (
+    // Desktop empty state
+    !isMobile ? (
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "text.secondary",
+          flexDirection: "column",
+          gap: 1,
+        }}
+      >
+        <Clock size={40} style={{ opacity: 0.3 }} />
+        <Typography variant="body2">Select a pending upload to review</Typography>
+      </Box>
+    ) : null
+  );
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", bgcolor: "background.default" }}>
       <Navbar showMenuButton={false} />
 
       {(error || folderError) && (
-        <Box sx={{ px: 3, py: 1, bgcolor: "error.dark" }}>
+        <Box sx={{ px: 3, py: 1, bgcolor: "error.dark", flexShrink: 0 }}>
           <Typography variant="body2" color="error.contrastText">
             {error || folderError}
           </Typography>
@@ -167,298 +483,8 @@ const AdminDashboard: React.FC = () => {
       )}
 
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Left panel — tabs */}
-        <Box
-          sx={{
-            width: 320,
-            flexShrink: 0,
-            borderRight: 1,
-            borderColor: "divider",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", borderBottom: 1, borderColor: "divider", flexShrink: 0 }}>
-          <Tabs
-            value={tab}
-            onChange={(_e, v) => setTab(v)}
-            variant="fullWidth"
-            sx={{ flex: 1 }}
-          >
-            <Tab
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  Models
-                  {pending.length > 0 && (
-                    <Chip label={pending.length} size="small" color="warning" />
-                  )}
-                </Box>
-              }
-              value="models"
-            />
-            <Tab
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  Folders
-                  {pendingFolders.length > 0 && (
-                    <Chip label={pendingFolders.length} size="small" color="warning" />
-                  )}
-                </Box>
-              }
-              value="folders"
-            />
-          </Tabs>
-          <IconButton onClick={loadData} size="small" sx={{ mx: 0.5 }} title="Refresh">
-            <RefreshCw size={16} />
-          </IconButton>
-          </Box>
-
-          <Box sx={{ flex: 1, overflowY: "auto" }}>
-          {/* Models tab */}
-          {tab === "models" && (
-            <>
-          {loading && (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-              <CircularProgress size={24} />
-            </Box>
-          )}
-
-          {!loading && pending.length === 0 && (
-            <Box sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
-              <CheckCircle size={36} style={{ opacity: 0.3, marginBottom: 8 }} />
-              <Typography variant="body2">No pending uploads</Typography>
-            </Box>
-          )}
-
-          {pending.map((m) => (
-            <Box
-              key={m.id}
-              onClick={() => setSelected(m)}
-              sx={{
-                display: "flex",
-                gap: 1.5,
-                p: 1.5,
-                cursor: "pointer",
-                borderBottom: 1,
-                borderColor: "divider",
-                bgcolor: selected?.id === m.id ? "action.selected" : "transparent",
-                "&:hover": { bgcolor: "action.hover" },
-              }}
-            >
-              {/* Thumbnail */}
-              <Box
-                sx={{
-                  width: 56,
-                  height: 56,
-                  flexShrink: 0,
-                  borderRadius: 1,
-                  overflow: "hidden",
-                  bgcolor: "action.hover",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {m.thumbnail ? (
-                  <img
-                    src={m.thumbnail}
-                    alt=""
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                ) : (
-                  <BoxIcon size={24} style={{ opacity: 0.4 }} />
-                )}
-              </Box>
-
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="body2" fontWeight={600} noWrap title={m.name}>
-                  {m.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block" noWrap>
-                  {m.uploaded_by_email ?? "Unknown user"}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  {formatDate(m.dateAdded)}
-                </Typography>
-              </Box>
-            </Box>
-          ))}
-            </>
-          )}
-
-          {/* Folders tab */}
-          {tab === "folders" && (
-            <>
-              {foldersLoading && (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-                  <CircularProgress size={24} />
-                </Box>
-              )}
-              {!foldersLoading && folderError && (
-                <Typography color="error" sx={{ p: 2 }}>{folderError}</Typography>
-              )}
-              {!foldersLoading && pendingFolders.length === 0 && (
-                <Box sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
-                  <CheckCircle size={36} style={{ opacity: 0.3, marginBottom: 8 }} />
-                  <Typography variant="body2">No pending folder requests</Typography>
-                </Box>
-              )}
-              {pendingFolders.map((f) => (
-                <Box
-                  key={f.id}
-                  sx={{ p: 1.5, borderBottom: 1, borderColor: "divider" }}
-                >
-                  <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start", mb: 1 }}>
-                    <FolderOpen size={20} style={{ marginTop: 2, opacity: 0.6, flexShrink: 0 }} />
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography variant="body2" fontWeight={600} noWrap>
-                        {f.name}
-                      </Typography>
-                      {f.parent_name && (
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Under: {f.parent_name}
-                        </Typography>
-                      )}
-                      <Typography variant="caption" color="text.secondary" display="block" noWrap>
-                        By: {f.requested_by_email ?? "Unknown"}
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  {approvingId === f.id ? (
-                    <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
-                      <TextField
-                        size="small"
-                        value={approveNames[f.id] ?? f.name}
-                        onChange={(e) => setApproveNames((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                        placeholder="Folder name"
-                        fullWidth
-                        autoFocus
-                      />
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        onClick={() => handleApproveFolder(f)}
-                        disabled={folderActionLoading || !approveNames[f.id]?.trim()}
-                      >
-                        OK
-                      </Button>
-                      <Button size="small" onClick={() => setApprovingId(null)}>✕</Button>
-                    </Box>
-                  ) : (
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="success"
-                        startIcon={<CheckCircle size={14} />}
-                        onClick={() => setApprovingId(f.id)}
-                        disabled={folderActionLoading}
-                        sx={{ flex: 1 }}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        startIcon={<XCircle size={14} />}
-                        onClick={() => { setFolderDenyTarget(f); setFolderDenyOpen(true); }}
-                        disabled={folderActionLoading}
-                        sx={{ flex: 1 }}
-                      >
-                        Deny
-                      </Button>
-                    </Box>
-                  )}
-                </Box>
-              ))}
-            </>
-          )}
-          </Box>
-        </Box>
-
-        {/* Right panel — detail + viewer */}
-        {!selected ? (
-          <Box
-            sx={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "text.secondary",
-              flexDirection: "column",
-              gap: 1,
-            }}
-          >
-            <Clock size={40} style={{ opacity: 0.3 }} />
-            <Typography variant="body2">Select a pending upload to review</Typography>
-          </Box>
-        ) : (
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {/* 3D viewer */}
-            <Box sx={{ flex: 1, minHeight: 0 }}>
-              <Viewer3D
-                url={selected.url}
-                filename={selected.name}
-                thumbnail={selected.thumbnail}
-              />
-            </Box>
-
-            <Divider />
-
-            {/* Info + actions */}
-            <Box sx={{ p: 2.5, overflowY: "auto", flexShrink: 0 }}>
-              <Typography variant="h6" fontWeight={700} mb={0.5} noWrap title={selected.name}>
-                {selected.name}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mb={0.5}>
-                Submitted by: <strong>{selected.uploaded_by_email ?? "Unknown"}</strong>
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mb={0.5}>
-                Date: {formatDate(selected.dateAdded)} &nbsp;|&nbsp; Size: {formatSize(selected.size)}
-              </Typography>
-
-              {selected.tags && selected.tags.length > 0 && (
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1 }}>
-                  {selected.tags.map((t) => (
-                    <Chip key={t} label={t} size="small" />
-                  ))}
-                </Box>
-              )}
-
-              {selected.description && (
-                <Typography variant="body2" sx={{ mb: 1.5, whiteSpace: "pre-wrap" }}>
-                  {selected.description}
-                </Typography>
-              )}
-
-              <Box sx={{ display: "flex", gap: 1.5, mt: 1 }}>
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={<CheckCircle size={16} />}
-                  onClick={handleApprove}
-                  disabled={actionLoading}
-                  sx={{ flex: 1 }}
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="contained"
-                  color="error"
-                  startIcon={<XCircle size={16} />}
-                  onClick={() => setDenyOpen(true)}
-                  disabled={actionLoading}
-                  sx={{ flex: 1 }}
-                >
-                  Deny
-                </Button>
-              </Box>
-            </Box>
-          </Box>
-        )}
+        {listPanel}
+        {detailPanel}
       </Box>
 
       {/* Folder deny dialog */}
@@ -482,12 +508,7 @@ const AdminDashboard: React.FC = () => {
           <Button onClick={() => { setFolderDenyOpen(false); setFolderDenyReason(""); setFolderDenyTarget(null); }}>
             Cancel
           </Button>
-          <Button
-            onClick={handleFolderDenyConfirm}
-            color="error"
-            variant="contained"
-            disabled={folderActionLoading}
-          >
+          <Button onClick={handleFolderDenyConfirm} color="error" variant="contained" disabled={folderActionLoading}>
             Confirm Deny
           </Button>
         </DialogActions>
@@ -514,12 +535,7 @@ const AdminDashboard: React.FC = () => {
           <Button onClick={() => { setDenyOpen(false); setDenyReason(""); }}>
             Cancel
           </Button>
-          <Button
-            onClick={handleDenyConfirm}
-            color="error"
-            variant="contained"
-            disabled={actionLoading}
-          >
+          <Button onClick={handleDenyConfirm} color="error" variant="contained" disabled={actionLoading}>
             Confirm Deny
           </Button>
         </DialogActions>
