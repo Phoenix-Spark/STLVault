@@ -44,8 +44,33 @@ import InputLabel from "@mui/material/InputLabel";
 
 const RECENT_LIMIT = 5;
 
+/** Returns true if every character in `query` appears in `str` in order. */
+function fuzzyMatch(str: string, query: string): boolean {
+  let qi = 0;
+  for (let i = 0; i < str.length && qi < query.length; i++) {
+    if (str[i] === query[qi]) qi++;
+  }
+  return qi === query.length;
+}
+
+function matchesSearch(name: string, tags: string[], query: string): boolean {
+  const q = query.toLowerCase().trim();
+  if (!q) return true;
+  const n = name.toLowerCase();
+  const tokens = q.split(/\s+/);
+  // All tokens must match somewhere (substring in name or any tag)
+  const allTokensMatch = tokens.every(
+    (token) =>
+      n.includes(token) || tags.some((t) => t.toLowerCase().includes(token))
+  );
+  if (allTokensMatch) return true;
+  // Fallback: fuzzy character-sequence match on the full query against name
+  return fuzzyMatch(n, q);
+}
+
 interface ModelListProps {
   models: STLModel[];
+  allModels: STLModel[];
   folders: Folder[];
   currentFolderName: string;
   isAllView?: boolean;
@@ -78,6 +103,7 @@ type SortOption =
 
 const ModelList: React.FC<ModelListProps> = ({
   models,
+  allModels,
   folders,
   currentFolderName,
   isAllView = false,
@@ -129,19 +155,14 @@ const ModelList: React.FC<ModelListProps> = ({
   }, []);
 
   const processedModels = useMemo(() => {
-    let result = [...models].filter(model => model.status === "approved");
+    // When searching inside a folder, cast the net across all models
+    const pool = searchQuery.trim() ? allModels : models;
+    let result = [...pool].filter(model => model.status === "approved");
 
-    // Filter by search
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (m) =>
-          m.name.toLowerCase().includes(query) ||
-          m.tags.some((t) => t.toLowerCase().includes(query)),
-      );
+      result = result.filter((m) => matchesSearch(m.name, m.tags, searchQuery));
     }
 
-    // Sort
     result.sort((a, b) => {
       switch (sortBy) {
         case "date-desc":
@@ -167,13 +188,12 @@ const ModelList: React.FC<ModelListProps> = ({
     }
 
     return result;
-  }, [models, searchQuery, sortBy, isAllView]);
+  }, [models, allModels, searchQuery, sortBy, isAllView]);
 
   const processedFolders = useMemo(() => {
     let result = [...folders];
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((f) => f.name.toLowerCase().includes(query));
+      result = result.filter((f) => matchesSearch(f.name, [], searchQuery));
     }
     // Always sort folders by name
     result.sort((a, b) => a.name.localeCompare(b.name));
@@ -320,8 +340,8 @@ const ModelList: React.FC<ModelListProps> = ({
           <div className="relative flex-1">
             <TextField
               fullWidth
-              id="search-input"
               label="Search"
+              value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               slotProps={{
                 input: {
@@ -334,14 +354,11 @@ const ModelList: React.FC<ModelListProps> = ({
                     <InputAdornment position="end">
                       <IconButton
                         className={
-                          searchQuery != ""
+                          searchQuery !== ""
                             ? "transition-all opacity-100"
                             : "transition-all opacity-0"
                         }
-                        onClick={() => {
-                          setSearchQuery("");
-                          document.getElementById("search-input").value = "";
-                        }}
+                        onClick={() => setSearchQuery("")}
                       >
                         <XCircle />
                       </IconButton>
@@ -513,9 +530,9 @@ const ModelList: React.FC<ModelListProps> = ({
               Recent uploads
             </Typography>
           )}
-          {isAllView && searchQuery.trim() && (
+          {searchQuery.trim() && (
             <Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
-              Search results across all folders
+              Searching all folders
             </Typography>
           )}
           <div
@@ -688,8 +705,7 @@ const ModelList: React.FC<ModelListProps> = ({
                           id={`fade-menu-${model.id}`}
                           anchorEl={anchorEl}
                           open={isMenuOpen}
-                          onClose={(e) => {
-                            e.stopPropagation();
+                          onClose={() => {
                             setActiveMenuModelId(null);
                           }}
                           anchorOrigin={{
@@ -702,7 +718,7 @@ const ModelList: React.FC<ModelListProps> = ({
                           }}
                         >
                           <MenuItem
-                            onClick={(e) => {
+                            onClick={() => {
                               onSelectModel(model);
                               setActiveMenuModelId(null);
                             }}

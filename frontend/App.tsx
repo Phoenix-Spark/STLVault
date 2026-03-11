@@ -660,6 +660,7 @@ const App = () => {
               ) : (
                 <ModelList
                   models={filteredModels}
+                  allModels={models}
                   folders={filteredFolders}
                   currentFolderName={currentFolderName}
                   isAllView={currentFolderId === "all"}
