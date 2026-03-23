@@ -21,7 +21,6 @@ services:
       context: ./backend
     pull_policy: build
     environment:
-      - FILE_STORAGE=/app/uploads #DO NOT CHANGE, MODIFY THE BINDS
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-stlvault}:${POSTGRES_PASSWORD}@postgres:5432/stlvault
       - WEBUI_URL=${APP_URL}
       - JWT_SECRET=${JWT_SECRET}
@@ -32,10 +31,13 @@ services:
       - SMTP_FROM=${SMTP_FROM:-noreply@stlvault.mil}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-}
       - AUTO_VERIFY=${AUTO_VERIFY:-false}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     ports:
       - "${API_PORT}:8080"
-    volumes:
-      - ${UPLOAD_PATH}:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy

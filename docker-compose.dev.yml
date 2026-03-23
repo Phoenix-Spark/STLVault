@@ -1,0 +1,36 @@
+# Dev override — use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Swaps AWS S3 for a local Garage instance.
+# Run scripts/init-garage.sh once after first startup to bootstrap the cluster.
+
+services:
+  garage:
+    image: dxflrs/garage:v1.0.1
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    ports:
+      - "3900:3900"   # S3 API
+      - "3903:3903"   # Admin API
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  backend:
+    environment:
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_BUCKET_NAME=stlvault-dev
+      - AWS_REGION=garage
+      - AWS_ACCESS_KEY_ID=GKdevkey000000000000
+      - AWS_SECRET_ACCESS_KEY=devsecretkey00000000000000000000
+    depends_on:
+      garage:
+        condition: service_healthy
+
+volumes:
+  garage_meta:
+  garage_data:

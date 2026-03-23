@@ -1,0 +1,21 @@
+metadata_dir = "/var/lib/garage/meta"
+data_dir     = "/var/lib/garage/data"
+db_engine    = "sqlite"
+
+replication_factor = 1
+
+# Fixed RPC secret for dev — change this in any shared/prod deployment
+rpc_secret = "1799bccfd7411eddcf9ebd316bc1f36277a2d6e1cde6977d12c8f0b84a871c73"
+
+[rpc_bind_addr]
+addr = "[::]:3901"
+
+[rpc_public_addr]
+addr = "garage:3901"
+
+[s3_api]
+s3_region    = "garage"
+api_bind_addr = "[::]:3900"
+
+[admin]
+api_bind_addr = "[::]:3903"

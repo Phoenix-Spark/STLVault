@@ -3,16 +3,18 @@ import json
 import os
 import time
 import uuid
-from pathlib import Path
+from contextlib import asynccontextmanager
 from typing import List, Optional
 
 # Load .env before any local module imports so os.getenv() picks them up
 from dotenv import load_dotenv
 load_dotenv()
 
+import aioboto3
+from botocore.exceptions import ClientError
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy import text
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import String, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +34,9 @@ from database import Base, async_session_maker, engine, get_async_session
 from models import Folder, STLModel, User
 from schemas import UserCreate, UserRead, UserUpdate
 
-UPLOAD_DIR = Path(os.getenv("FILE_STORAGE", "./app/uploads"))
+S3_BUCKET = os.getenv("S3_BUCKET_NAME", "")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "")  # Set for non-AWS S3 (e.g. Garage in dev)
 WEBUI_URL = os.getenv("WEBUI_URL", "http://localhost:8989")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").lower().strip()
 
@@ -41,6 +45,24 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").lower().strip()
 # Set EXTRA_CORS_ORIGINS=http://localhost:5173 in your local .env or shell.
 _extra = os.getenv("EXTRA_CORS_ORIGINS", "")
 CORS_ORIGINS = [WEBUI_URL] + [o.strip() for o in _extra.split(",") if o.strip()]
+
+def s3_client():
+    from botocore.config import Config
+    kwargs: dict = {"region_name": AWS_REGION}
+    if S3_ENDPOINT_URL:
+        kwargs["endpoint_url"] = S3_ENDPOINT_URL
+        kwargs["config"] = Config(s3={"addressing_style": "path"})
+    return aioboto3.Session().client("s3", **kwargs)
+
+
+async def s3_delete(key: str) -> None:
+    """Delete an object from S3, ignoring 404s."""
+    try:
+        async with s3_client() as s3:
+            await s3.delete_object(Bucket=S3_BUCKET, Key=key)
+    except ClientError:
+        pass
+
 
 app = FastAPI(title="STLVault API")
 
@@ -120,8 +142,6 @@ async def verify_email_code(
 
 @app.on_event("startup")
 async def startup():
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Safe column migrations — no-op if the column already exists
@@ -148,6 +168,10 @@ async def startup():
         ))
         await conn.execute(text(
             "ALTER TABLE folders ADD COLUMN IF NOT EXISTS requested_by VARCHAR"
+        ))
+        # S3 storage key
+        await conn.execute(text(
+            "ALTER TABLE models ADD COLUMN IF NOT EXISTS storage_key VARCHAR"
         ))
 
     # Promote ADMIN_EMAIL to superuser on first boot (idempotent)
@@ -210,6 +234,7 @@ def model_to_dict(m: STLModel) -> dict:
         "denial_reason": m.denial_reason,
         "uploaded_by": m.uploaded_by,
         "uploaded_by_email": None,
+        "storage_key": m.storage_key,
     }
 
 
@@ -375,12 +400,14 @@ async def upload_model(
     mid = str(uuid.uuid4())
     filename_str = file.filename or ".stl"
     ext = os.path.splitext(filename_str)[1] or ".stl"
-    dest = os.path.join(UPLOAD_DIR, f"{mid}{ext}")
+    key = f"{mid}{ext}"
 
-    with open(dest, "wb") as f:
-        import shutil
-        shutil.copyfileobj(file.file, f)
-    size = os.path.getsize(dest)
+    file_data = await file.read()
+    size = len(file_data)
+
+    async with s3_client() as s3:
+        import io
+        await s3.upload_fileobj(io.BytesIO(file_data), S3_BUCKET, key)
 
     tag_list: List[str] = []
     if tags:
@@ -401,6 +428,7 @@ async def upload_model(
         thumbnail=thumbnail,
         uploaded_by=str(user.id),
         status="pending",
+        storage_key=key,
     )
     session.add(m)
     await session.commit()
@@ -471,12 +499,8 @@ async def delete_model(
     if not user.is_superuser and m.uploaded_by != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized to delete this model")
 
-    for fname in os.listdir(UPLOAD_DIR):
-        if fname.startswith(model_id):
-            try:
-                os.remove(os.path.join(UPLOAD_DIR, fname))
-            except Exception:
-                pass
+    if m.storage_key:
+        await s3_delete(m.storage_key)
 
     await session.execute(delete(STLModel).where(STLModel.id == model_id))
     await session.commit()
@@ -486,17 +510,29 @@ async def delete_model(
 @app.get("/api/models/{model_id}/download")
 async def download_model(
     model_id: str,
+    session: AsyncSession = Depends(get_async_session),
     token: Optional[str] = None,
     _user: User = Depends(current_download_user),
 ):
-    for fname in os.listdir(UPLOAD_DIR):
-        if fname.startswith(model_id):
-            return FileResponse(
-                os.path.join(UPLOAD_DIR, fname),
-                media_type="application/octet-stream",
-                filename=fname,
-            )
-    raise HTTPException(status_code=404, detail="File not found")
+    result = await session.execute(select(STLModel).where(STLModel.id == model_id))
+    m = result.scalar_one_or_none()
+    if not m or not m.storage_key:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    async def stream_s3():
+        async with s3_client() as s3:
+            try:
+                response = await s3.get_object(Bucket=S3_BUCKET, Key=m.storage_key)
+                async for chunk in response["Body"].iter_chunks():
+                    yield chunk
+            except ClientError:
+                raise HTTPException(status_code=404, detail="File not found")
+
+    return StreamingResponse(
+        stream_s3(),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{m.name}"'},
+    )
 
 
 @app.post("/api/models/bulk-delete")
@@ -512,12 +548,8 @@ async def bulk_delete(
             continue
         if not user.is_superuser and m.uploaded_by != str(user.id):
             continue
-        for fname in os.listdir(UPLOAD_DIR):
-            if fname.startswith(mid):
-                try:
-                    os.remove(os.path.join(UPLOAD_DIR, fname))
-                except Exception:
-                    pass
+        if m.storage_key:
+            await s3_delete(m.storage_key)
         await session.execute(delete(STLModel).where(STLModel.id == mid))
     await session.commit()
     return {"ok": True}
@@ -571,27 +603,26 @@ async def replace_model_file(
     _user: User = Depends(current_active_verified_user),
 ):
     result = await session.execute(select(STLModel).where(STLModel.id == model_id))
-    if not result.scalar_one_or_none():
+    existing = result.scalar_one_or_none()
+    if not existing:
         raise HTTPException(status_code=404, detail="Model not found")
 
-    for fname in os.listdir(UPLOAD_DIR):
-        if fname.startswith(model_id):
-            try:
-                os.remove(os.path.join(UPLOAD_DIR, fname))
-            except Exception:
-                pass
+    if existing.storage_key:
+        await s3_delete(existing.storage_key)
 
     ext = os.path.splitext(file.filename or ".stl")[-1] or ".stl"
-    dest = os.path.join(UPLOAD_DIR, f"{model_id}{ext}")
-    with open(dest, "wb") as f:
-        import shutil
-        shutil.copyfileobj(file.file, f)
-    size = os.path.getsize(dest)
+    key = f"{model_id}{ext}"
+
+    import io
+    file_data = await file.read()
+    size = len(file_data)
+    async with s3_client() as s3:
+        await s3.upload_fileobj(io.BytesIO(file_data), S3_BUCKET, key)
 
     await session.execute(
         update(STLModel)
         .where(STLModel.id == model_id)
-        .values(url=f"/api/models/{model_id}/download", size=size, thumbnail=thumbnail)
+        .values(url=f"/api/models/{model_id}/download", size=size, thumbnail=thumbnail, storage_key=key)
     )
     await session.commit()
     result = await session.execute(select(STLModel).where(STLModel.id == model_id))
@@ -627,13 +658,11 @@ async def replace_model_thumbnail(
 
 @app.get("/api/storage-stats")
 async def storage_stats(
+    session: AsyncSession = Depends(get_async_session),
     _user: User = Depends(current_active_verified_user),
 ):
-    used = sum(
-        os.path.getsize(os.path.join(UPLOAD_DIR, f))
-        for f in os.listdir(UPLOAD_DIR)
-        if os.path.isfile(os.path.join(UPLOAD_DIR, f))
-    )
+    result = await session.execute(select(func.coalesce(func.sum(STLModel.size), 0)))
+    used = result.scalar()
     return {"used": used, "total": 5 * 1024 * 1024 * 1024}
 
 
@@ -737,13 +766,9 @@ async def admin_deny_model(
     if not m:
         raise HTTPException(status_code=404, detail="Model not found")
 
-    # Delete physical file
-    for fname in os.listdir(UPLOAD_DIR):
-        if fname.startswith(model_id):
-            try:
-                os.remove(os.path.join(UPLOAD_DIR, fname))
-            except Exception:
-                pass
+    # Delete from S3
+    if m.storage_key:
+        await s3_delete(m.storage_key)
 
     # Mark record as denied (keep for in-app notification)
     await session.execute(
@@ -851,12 +876,8 @@ async def admin_deny_folder(
         select(STLModel).where(STLModel.folderId == folder_id)
     )
     for m in models_result.scalars().all():
-        for fname in os.listdir(UPLOAD_DIR):
-            if fname.startswith(m.id):
-                try:
-                    os.remove(os.path.join(UPLOAD_DIR, fname))
-                except Exception:
-                    pass
+        if m.storage_key:
+            await s3_delete(m.storage_key)
         await session.execute(
             update(STLModel)
             .where(STLModel.id == m.id)

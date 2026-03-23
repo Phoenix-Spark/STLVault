@@ -35,3 +35,4 @@ class STLModel(Base):
     uploaded_by = Column(String, nullable=True)
     status = Column(String, default="pending")
     denial_reason = Column(Text, nullable=True)
+    storage_key = Column(String, nullable=True)  # S3 object key
