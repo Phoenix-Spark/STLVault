@@ -37,6 +37,7 @@ from schemas import UserCreate, UserRead, UserUpdate
 S3_BUCKET = os.getenv("S3_BUCKET_NAME", "")
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "")  # Set for non-AWS S3 (e.g. Garage in dev)
+STORAGE_QUOTA_BYTES = int(os.getenv("STORAGE_QUOTA_BYTES", str(5 * 1024 * 1024 * 1024)))
 WEBUI_URL = os.getenv("WEBUI_URL", "http://localhost:8989")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").lower().strip()
 
@@ -663,7 +664,7 @@ async def storage_stats(
 ):
     result = await session.execute(select(func.coalesce(func.sum(STLModel.size), 0)))
     used = result.scalar()
-    return {"used": used, "total": 5 * 1024 * 1024 * 1024}
+    return {"used": used, "total": STORAGE_QUOTA_BYTES}
 
 
 # --- Admin endpoints ---
