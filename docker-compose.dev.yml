@@ -4,10 +4,13 @@
 
 services:
   garage:
-    image: dxflrs/garage:v1.0.1
-    command: /garage -c /garage.toml server
+    image: dxflrs/garage:v2.0.0
+    entrypoint: ["/garage"]
+    command: ["-c", "/run/garage.toml", "server"]
+    configs:
+      - source: garage_config
+        target: /run/garage.toml
     volumes:
-      - ./garage/garage.toml:/garage.toml:ro
       - garage_meta:/var/lib/garage/meta
       - garage_data:/var/lib/garage/data
     ports:
@@ -15,7 +18,7 @@ services:
       - "3903:3903"   # Admin API
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/garage", "status"]
+      test: ["CMD", "/garage", "-c", "/run/garage.toml", "status"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -26,11 +29,29 @@ services:
       - S3_ENDPOINT_URL=http://garage:3900
       - S3_BUCKET_NAME=stlvault-dev
       - AWS_REGION=garage
-      - AWS_ACCESS_KEY_ID=GKdevkey000000000000
-      - AWS_SECRET_ACCESS_KEY=devsecretkey00000000000000000000
+      - AWS_ACCESS_KEY_ID=GK000000000000000000000000
+      - AWS_SECRET_ACCESS_KEY=0000000000000000000000000000000000000000000000000000000000000001
     depends_on:
       garage:
         condition: service_healthy
+
+configs:
+  garage_config:
+    content: |
+      metadata_dir = "/var/lib/garage/meta"
+      data_dir     = "/var/lib/garage/data"
+      db_engine    = "sqlite"
+      replication_factor = 1
+      rpc_secret = "1799bccfd7411eddcf9ebd316bc1f36277a2d6e1cde6977d12c8f0b84a871c73"
+      rpc_bind_addr = "[::]:3901"
+      rpc_public_addr = "garage:3901"
+
+      [s3_api]
+      s3_region    = "garage"
+      api_bind_addr = "[::]:3900"
+
+      [admin]
+      api_bind_addr = "[::]:3903"
 
 volumes:
   garage_meta:
