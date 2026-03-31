@@ -130,7 +130,7 @@ const Settings: React.FC = () => {
         </div>
 
         {/* Api Settings*/}
-        <div className="mb-8">
+        {/*<div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <EthernetPort className="w-5 h-5 text-blue-400" />
             <h3 className="text-lg font-semibold text-white">API Host</h3>
@@ -179,7 +179,7 @@ const Settings: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>*/}
       </div>
     </div>
   );
