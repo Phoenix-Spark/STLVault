@@ -599,7 +599,7 @@ const ModelList: React.FC<ModelListProps> = ({
                           <FileBox className="w-12 h-12 text-slate-600 group-hover:text-blue-400 transition-colors" />
                         </>
                       )}
-                      <div className="absolute bottom-[5.2rem] left-2 flex gap-1 max-w-[80%]">
+                      <div className="absolute bottom-[6.8rem] left-2 flex gap-1 max-w-[80%]">
                         {model.tags.slice(0, 2).map((tag) => (
                           <Chip
                             sx={{
@@ -637,7 +637,10 @@ const ModelList: React.FC<ModelListProps> = ({
                         <Typography variant="body1" noWrap sx={{ mb: 0.5 }}>
                           {model.name}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                        <Typography variant="body2" sx={{ mb: 1.5, color: "text.secondary"}}>
+                          {model.description}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "text.secondary" , opacity: 0.5}}>
                           {(model.size / (1024 * 1024)).toFixed(2)} MB &bull;{" "}
                           {new Date(model.dateAdded).toLocaleDateString()}
                         </Typography>

@@ -956,6 +956,11 @@ async def admin_delete_user(
         raise HTTPException(status_code=404, detail="User not found")
     if str(u.id) == str(current_user.id):
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    await session.execute(
+        update(STLModel)
+        .where(STLModel.uploaded_by == user_id)
+        .values(uploaded_by=str(current_user.id))
+    )
     await session.execute(delete(User).where(User.id == user_id))
     await session.commit()
     return {"ok": True}
