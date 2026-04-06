@@ -69,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuth();
   const isDesktopVariant = variant === "desktop";
   const [isCreatingRoot, setIsCreatingRoot] = useState(false);
-  const [newRootName, setNewRootName] = useState("");
+  const [newRootName, setNewRootName] = useState({name: "", abbrev: ""});
 
   // State for tree interactions
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -154,11 +154,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     e.preventDefault();
     if (newRootName.trim() && !creatingSubfolderId) {
       onCreateFolder(newRootName.trim(), null);
-      setNewRootName("");
+      setNewRootName({...newRootName, name:""});
       setIsCreatingRoot(false);
     } else if (newRootName.trim() && creatingSubfolderId != "") {
       onCreateFolder(newRootName.trim(), creatingSubfolderId);
-      setNewRootName("");
+      setNewRootName({...newRootName, name:""});
       setIsCreatingRoot(false);
       setCreatingSubfolderId("");
     }
@@ -411,16 +411,35 @@ const Sidebar: React.FC<SidebarProps> = ({
             isCreatingRoot ? "opacity-100" : "opacity-0 origin-top h-0"
           }`}
         >
-          <div className="flex items-center gap-1 mb-3">
+          <div className="flex flex-col items-center gap-2 py-0 mb-3">
             <OutlinedInput
               id="folder-name-input"
               type="text"
               className="w-full"
               placeholder="Folder Name..."
-              value={newRootName}
-              onChange={(e) => setNewRootName(e.target.value)}
+              value={newRootName.name}
+              onChange={(e) => setNewRootName({...newRootName, name: e.target.value})}
               onBlur={() => {
-                !newRootName.trim();
+                !newRootName.name.trim();
+                setIsCreatingRoot(false);
+                setCreatingSubfolderId("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setIsCreatingRoot(false);
+                  setCreatingSubfolderId("");
+                }
+              }}
+            />
+            <OutlinedInput
+              id="folder-name-abbrev"
+              type="text"
+              className="w-full"
+              placeholder="Folder abbreviation..."
+              value={newRootName.abbrev}
+              onChange={(e) => setNewRootName({...newRootName, abbrev: e.target.value})}
+              onBlur={() => {
+                !newRootName.abbrev.trim();
                 setIsCreatingRoot(false);
                 setCreatingSubfolderId("");
               }}

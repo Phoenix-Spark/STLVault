@@ -41,6 +41,7 @@ import InputAdornment from "@mui/material/InputAdornment";
 import FormControl from "@mui/material/FormControl";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import InputLabel from "@mui/material/InputLabel";
+import Crumb from "./Crumb";
 
 const RECENT_LIMIT = 5;
 
@@ -72,7 +73,10 @@ interface ModelListProps {
   models: STLModel[];
   allModels: STLModel[];
   folders: Folder[];
+  allFolders: Folder[];
+  folderTree: Folder[];
   currentFolderName: string;
+  currentFolderId: string;
   isAllView?: boolean;
   onBackNavigation: () => void;
   onUpload: (files: FileList) => void;
@@ -86,6 +90,7 @@ interface ModelListProps {
   onToggleSelection: (id: string) => void;
   onSelectAll: (filtered) => void;
   onClearSelection: () => void;
+  setBrowseFolderId: (id: string) => void;
 
   // Folder Interaction Props
   onNavigateFolder: (id: string) => void;
@@ -105,7 +110,10 @@ const ModelList: React.FC<ModelListProps> = ({
   models,
   allModels,
   folders,
+  allFolders,
+  folderTree,
   currentFolderName,
+  currentFolderId,
   isAllView = false,
   onBackNavigation,
   onUpload,
@@ -114,6 +122,7 @@ const ModelList: React.FC<ModelListProps> = ({
   onDelete,
   selectedModelId,
   selectedIds,
+  setBrowseFolderId,
   onToggleSelection,
   onSelectAll,
   onClearSelection,
@@ -121,7 +130,7 @@ const ModelList: React.FC<ModelListProps> = ({
   onMoveToFolder,
   onUploadToFolder,
 }) => {
-  console.log(models)
+  console.log(folderTree)
   const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -294,7 +303,8 @@ const ModelList: React.FC<ModelListProps> = ({
                 alignItems: "baseline",
               }}
             >
-              <Typography variant="h4">{currentFolderName}</Typography>
+              {/* <Typography variant="h4">{currentFolderName}</Typography> */}
+              <Crumb folders={allFolders} currentFolderId={currentFolderId} onNavigateFolder={onNavigateFolder}/>
               <Typography variant="body1" sx={{ color: "text.secondary" }}>
                 {processedFolders.length}{" "}
                 {processedFolders.length === 1 ? "folder • " : "folders • "}

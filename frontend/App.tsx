@@ -113,6 +113,13 @@ const App = () => {
       .catch((e) => console.error("Failed to refresh storage stats", e));
   }, [models]);
 
+  const buildFolderTree = (allFolders: Folder[], parentId: string | null = null): (Folder & { children: any[] })[] => {
+    return allFolders
+      .filter((f) => f.parentId === parentId)
+      .map((f) => ({ ...f, children: buildFolderTree(allFolders, f.id) }));
+  };
+  const folderTree = [{id: "root", name: "Home", parentId: null, children: buildFolderTree(folders)}];
+
   // Filter models based on selection
   const filteredModels =
     currentFolderId === "all"
@@ -662,7 +669,10 @@ const App = () => {
                   models={filteredModels}
                   allModels={models}
                   folders={filteredFolders}
+                  allFolders={folders}
+                  folderTree={folderTree}
                   currentFolderName={currentFolderName}
+                  currentFolderId={currentFolderId}
                   isAllView={currentFolderId === "all"}
                   onBackNavigation={() => {
                     setCurrentFolderId(currentFolderParentId);
@@ -674,6 +684,7 @@ const App = () => {
                   selectedModelId={selectedModelId}
                   // Selection Props
                   selectedIds={selectedIds}
+                  setBrowseFolderId={setBrowseFolderId}
                   onToggleSelection={handleToggleSelection}
                   onSelectAll={(filtered) => handleSelectAll(filtered)}
                   onClearSelection={() => setSelectedIds(new Set())}
