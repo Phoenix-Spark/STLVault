@@ -4,6 +4,7 @@ import Sidebar from "./components/Sidebar";
 import ModelList from "./components/ModelList";
 import DetailPanel from "./components/DetailPanel";
 import Navbar from "./components/Navbar";
+import WelcomeDialog from "./components/WelcomeDialog";
 import { STLModel, Folder, StorageStats, STLModelCollection } from "./types";
 import { generateThumbnail } from "./services/thumbnailGenerator";
 import { api } from "./services/api";
@@ -81,6 +82,17 @@ const App = () => {
     type: "single" | "bulk" | "folder";
     id?: string;
   }>({ isOpen: false, type: "single" });
+
+  // Welcome Dialog State
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const key = `stlvault_welcome_seen_${user.id}`;
+    if (!localStorage.getItem(key)) {
+      setShowWelcomeDialog(true);
+    }
+  }, [user?.id]);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -1431,6 +1443,16 @@ const App = () => {
             Upload submitted — pending admin review before appearing in the vault.
           </Alert>
         </Snackbar>
+
+        <WelcomeDialog
+          open={showWelcomeDialog}
+          onClose={() => {
+            setShowWelcomeDialog(false);
+            if (user) {
+              localStorage.setItem(`stlvault_welcome_seen_${user.id}`, "1");
+            }
+          }}
+        />
       </div>
   );
 };
