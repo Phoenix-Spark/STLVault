@@ -891,6 +891,18 @@ async def admin_deny_folder(
 
 
 
+@app.get("/api/admin/contact")
+async def get_admin_contact(
+    session: AsyncSession = Depends(get_async_session),
+    _user: User = Depends(current_active_verified_user),
+):
+    result = await session.execute(
+        select(User.email, User.display_name).where(User.is_superuser == True).order_by(User.email)
+    )
+    admins = result.all()
+    return [{"email": r.email, "display_name": r.display_name} for r in admins]
+
+
 @app.get("/api/admin/users")
 async def admin_list_users(
     session: AsyncSession = Depends(get_async_session),

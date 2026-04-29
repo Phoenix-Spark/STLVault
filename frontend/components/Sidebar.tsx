@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Folder as FolderIcon,
@@ -11,8 +11,10 @@ import {
   ChevronRight,
   Settings,
   PlusIcon,
+  Mail,
 } from "lucide-react";
 import { Folder, STLModel, StorageStats } from "../types";
+import { api } from "../services/api";
 
 import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
@@ -70,6 +72,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const isDesktopVariant = variant === "desktop";
   const [isCreatingRoot, setIsCreatingRoot] = useState(false);
   const [newRootName, setNewRootName] = useState({name: "", abbrev: ""});
+  const [showContact, setShowContact] = useState(false);
+  const [adminContacts, setAdminContacts] = useState<{ email: string; display_name: string | null }[]>([]);
+  const [contactLoading, setContactLoading] = useState(false);
 
   // State for tree interactions
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -152,15 +157,30 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleCreateFolderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newRootName.trim() && !creatingSubfolderId) {
-      onCreateFolder(newRootName.trim(), null);
-      setNewRootName({...newRootName, name:""});
-      setIsCreatingRoot(false);
-    } else if (newRootName.trim() && creatingSubfolderId != "") {
-      onCreateFolder(newRootName.trim(), creatingSubfolderId);
-      setNewRootName({...newRootName, name:""});
-      setIsCreatingRoot(false);
+    const name = newRootName.name.trim();
+    if (!name) return;
+    if (!creatingSubfolderId) {
+      onCreateFolder(name, null);
+    } else {
+      onCreateFolder(name, creatingSubfolderId);
       setCreatingSubfolderId("");
+    }
+    setNewRootName({ ...newRootName, name: "" });
+    setIsCreatingRoot(false);
+  };
+
+  const handleContactAdmin = async () => {
+    setShowContact(true);
+    if (adminContacts.length === 0) {
+      setContactLoading(true);
+      try {
+        const contacts = await api.getAdminContact();
+        setAdminContacts(contacts);
+      } catch {
+        setAdminContacts([]);
+      } finally {
+        setContactLoading(false);
+      }
     }
   };
 
@@ -431,25 +451,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 }
               }}
             />
-            <OutlinedInput
-              id="folder-name-abbrev"
-              type="text"
-              className="w-full"
-              placeholder="Folder abbreviation..."
-              value={newRootName.abbrev}
-              onChange={(e) => setNewRootName({...newRootName, abbrev: e.target.value})}
-              onBlur={() => {
-                !newRootName.abbrev.trim();
-                setIsCreatingRoot(false);
-                setCreatingSubfolderId("");
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setIsCreatingRoot(false);
-                  setCreatingSubfolderId("");
-                }
-              }}
-            />
           </div>
         </form>
 
@@ -490,7 +491,64 @@ const Sidebar: React.FC<SidebarProps> = ({
           Settings
         </Button>
 
-        {user.is_superuser && <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md p-3 shadow-lg">
+        {!user?.is_superuser && (
+          <Button
+            variant="outlined"
+            startIcon={<Mail />}
+            color="secondary"
+            onClick={handleContactAdmin}
+            className="w-full"
+            sx={{ alignItems: "center", justifyContent: "center" }}
+          >
+            Contact Admin
+          </Button>
+        )}
+
+        {/* Contact Admin modal */}
+        {showContact && (
+          <div className="absolute inset-0 z-50 flex items-end justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-vault-800 border border-vault-700 rounded-xl shadow-2xl w-full p-5 space-y-3">
+              <div className="flex justify-between items-center">
+                <Typography variant="h6">Contact Admin</Typography>
+                <IconButton size="small" onClick={() => setShowContact(false)} sx={{ color: "grey.400" }}>
+                  <X className="w-4 h-4" />
+                </IconButton>
+              </div>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                Reach out to an administrator for help or questions.
+              </Typography>
+              {contactLoading ? (
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>Loading...</Typography>
+              ) : adminContacts.length === 0 ? (
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>No admin contacts found.</Typography>
+              ) : (
+                <div className="space-y-2">
+                  {adminContacts.map((a) => (
+                    <div key={a.email} className="flex items-center justify-between gap-2 bg-vault-700/40 rounded-md px-3 py-2">
+                      <div className="min-w-0">
+                        {a.display_name && (
+                          <Typography variant="body2" fontWeight={600} noWrap>{a.display_name}</Typography>
+                        )}
+                        <Typography variant="caption" sx={{ color: "text.secondary" }} noWrap>{a.email}</Typography>
+                      </div>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        href={`mailto:${a.email}`}
+                        startIcon={<Mail className="w-3 h-3" />}
+                      >
+                        Email
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+
+        {user?.is_superuser && <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-md p-3 shadow-lg">
           <p className="text-xs text-white/80 font-medium mb-1 truncate mb-2">
             Storage Used
           </p>

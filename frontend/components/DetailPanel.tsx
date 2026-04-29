@@ -19,6 +19,7 @@ import {
 
 import { generateThumbnail } from "../services/thumbnailGenerator";
 import { api } from "../services/api";
+import FolderBreadcrumbPicker from "./FolderBreadcrumbPicker";
 import { Typography } from "@mui/material";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -48,6 +49,8 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
   const { user } = useAuth();
   const [isReplacing, setIsReplacing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editTags, setEditTags] = useState("");
@@ -67,6 +70,8 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
       setEditTags(model.tags.join(", "));
       setIsEditing(false);
       setIsReplacing(false);
+      setIsMoving(false);
+      setMoveTargetId(null);
       setTempThumb("");
       setErrorState({ show: false, message: "" });
     }
@@ -197,6 +202,19 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
     setIsEditing(false);
   };
 
+  const handleMoveConfirm = async () => {
+    if (!model || moveTargetId === null) return;
+    try {
+      await api.bulkMoveModels([model.id], moveTargetId);
+      onUpdate(model.id, { folderId: moveTargetId });
+      setIsMoving(false);
+      setMoveTargetId(null);
+    } catch (e) {
+      console.error("Failed to move model", e);
+      alert("Failed to move model");
+    }
+  };
+
   const getPath = (folderId: string): string => {
     const parts: string[] = [];
     let current: string | null = folderId;
@@ -285,8 +303,54 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
           </div>
 
           <div>
-            <Typography variant="h7">Location</Typography>
-            <Typography variant="body2" sx={{color: "text.secondary"}}>{getPath(model.folderId)}</Typography>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">Location</Typography>
+              {user?.is_superuser && !isMoving && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    setMoveTargetId(model.folderId);
+                    setIsMoving(true);
+                  }}
+                >
+                  Move
+                </Button>
+              )}
+            </Stack>
+            <Typography variant="body2" sx={{ color: "text.secondary" }} gutterBottom>
+              {getPath(model.folderId)}
+            </Typography>
+            {isMoving && (
+              <div className="mt-2 space-y-2">
+                <FolderBreadcrumbPicker
+                  folders={folders}
+                  selectedFolderId={moveTargetId}
+                  onSelect={setMoveTargetId}
+                />
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="success"
+                    disabled={moveTargetId === model.folderId}
+                    onClick={handleMoveConfirm}
+                  >
+                    Confirm Move
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={() => {
+                      setIsMoving(false);
+                      setMoveTargetId(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </Stack>
+              </div>
+            )}
           </div>
 
           <Divider />

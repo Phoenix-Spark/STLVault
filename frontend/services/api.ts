@@ -320,6 +320,13 @@ export const api = {
     if (!res.ok) throw new Error("Deny failed");
   },
 
+  // 22b. Get admin contact emails (any authenticated user)
+  getAdminContact: async (): Promise<{ email: string; display_name: string | null }[]> => {
+    const res = await authFetch(`${API_BASE_URL}/admin/contact`);
+    if (!res.ok) throw new Error("Failed to fetch admin contacts");
+    return res.json();
+  },
+
   // 23. ADMIN: list all users
   getAdminUsers: async (): Promise<{ id: string; email: string; display_name: string | null; is_active: boolean; is_verified: boolean; is_superuser: boolean }[]> => {
     const res = await authFetch(`${API_BASE_URL}/admin/users`);
