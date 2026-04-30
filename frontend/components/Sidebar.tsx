@@ -12,6 +12,8 @@ import {
   Settings,
   PlusIcon,
   Mail,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
 import { Folder, STLModel, StorageStats } from "../types";
 import { api } from "../services/api";
@@ -75,6 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [showContact, setShowContact] = useState(false);
   const [adminContacts, setAdminContacts] = useState<{ email: string; display_name: string | null }[]>([]);
   const [contactLoading, setContactLoading] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
 
   // State for tree interactions
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -495,10 +498,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Button
             variant="outlined"
             startIcon={<Mail />}
-            color="secondary"
+            // color="#999999"
             onClick={handleContactAdmin}
             className="w-full"
-            sx={{ alignItems: "center", justifyContent: "center" }}
+            sx={{ alignItems: "center", justifyContent: "center", color: "#BBBBBB" , borderColor: "#BBBBBB"}}
           >
             Contact Admin
           </Button>
@@ -534,10 +537,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <Button
                         size="small"
                         variant="contained"
-                        href={`mailto:${a.email}`}
-                        startIcon={<Mail className="w-3 h-3" />}
+                        color={copiedEmail === a.email ? "success" : "primary"}
+                        startIcon={copiedEmail === a.email ? <CheckCheck className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(a.email);
+                          setCopiedEmail(a.email);
+                          setTimeout(() => setCopiedEmail(null), 2000);
+                        }}
                       >
-                        Email
+                        {copiedEmail === a.email ? "Copied!" : "Copy"}
                       </Button>
                     </div>
                   ))}

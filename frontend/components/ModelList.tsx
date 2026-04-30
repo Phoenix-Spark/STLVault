@@ -687,7 +687,7 @@ const ModelList: React.FC<ModelListProps> = ({
                           <DownloadIcon />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Open in Slicer">
+                      {/* <Tooltip title="Open in Slicer">
                         <IconButton
                           aria-label="open in slicer"
                           onClick={(e) => {
@@ -697,7 +697,7 @@ const ModelList: React.FC<ModelListProps> = ({
                         >
                           <ScreenShareIcon />
                         </IconButton>
-                      </Tooltip>
+                      </Tooltip> */}
                       <div className="absolute right-2">
                         <IconButton
                           id={`fade-button-${model.id}`}

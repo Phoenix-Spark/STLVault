@@ -5,6 +5,7 @@ import ModelList from "./components/ModelList";
 import DetailPanel from "./components/DetailPanel";
 import Navbar from "./components/Navbar";
 import WelcomeDialog from "./components/WelcomeDialog";
+import FolderBreadcrumbPicker from "./components/FolderBreadcrumbPicker";
 import { STLModel, Folder, StorageStats, STLModelCollection } from "./types";
 import { generateThumbnail } from "./services/thumbnailGenerator";
 import { api } from "./services/api";
@@ -51,6 +52,7 @@ const App = () => {
   // Bulk Action State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveFolderId, setMoveFolderId] = useState<string | null>(null);
   const [showTagModal, setShowTagModal] = useState(false);
   const [bulkTags, setBulkTags] = useState("");
 
@@ -760,8 +762,8 @@ const App = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowMoveModal(true)}
+                    {user?.is_superuser && <button
+                      onClick={() => { setMoveFolderId(null); setShowMoveModal(true); }}
                       className="p-2 rounded-full hover:bg-vault-700 text-slate-300 hover:text-blue-400 transition-colors flex items-center gap-2"
                       title="Move Selected"
                     >
@@ -769,9 +771,9 @@ const App = () => {
                       <span className="text-sm font-medium hidden sm:inline">
                         Move
                       </span>
-                    </button>
+                    </button>}
 
-                    <button
+                    {(selectedModel?.uploaded_by === user?.id || user?.is_superuser) && <button
                       onClick={() => {
                         setBulkTags("");
                         setShowTagModal(true);
@@ -783,7 +785,7 @@ const App = () => {
                       <span className="text-sm font-medium hidden sm:inline">
                         Tag
                       </span>
-                    </button>
+                    </button>}
 
                     <button
                       onClick={handleBulkDownload}
@@ -1333,17 +1335,20 @@ const App = () => {
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
-                      {folders.map((folder) => (
-                        <button
-                          key={folder.id}
-                          onClick={() => handleBulkMoveSubmit(folder.id)}
-                          className="w-full text-left px-3 py-2 rounded hover:bg-vault-700 text-slate-300 hover:text-white text-sm transition-colors"
-                        >
-                          {folder.name}
-                        </button>
-                      ))}
+                    <div className="mb-4">
+                      <FolderBreadcrumbPicker
+                        folders={folders}
+                        selectedFolderId={moveFolderId}
+                        onSelect={setMoveFolderId}
+                      />
                     </div>
+                    <button
+                      disabled={!moveFolderId}
+                      onClick={() => moveFolderId && handleBulkMoveSubmit(moveFolderId)}
+                      className="w-full py-2 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+                    >
+                      Move Here
+                    </button>
                   </div>
                 </div>
               )}

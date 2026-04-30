@@ -29,6 +29,11 @@ import TextField from "@mui/material/TextField";
 import Badge from "@mui/material/Badge";
 import Chip from "@mui/material/Chip";
 import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface DetailPanelProps {
@@ -55,6 +60,13 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
   const [editDesc, setEditDesc] = useState("");
   const [editTags, setEditTags] = useState("");
   const [tempThumb, setTempThumb] = useState("");
+
+  // Tag modal state
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [modalTags, setModalTags] = useState<string[]>([]);
+  const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null);
+  const [editingTagValue, setEditingTagValue] = useState("");
+  const newTagInputRef = useRef<HTMLInputElement>(null);
   const [errorState, setErrorState] = useState<{
     show: boolean;
     message: string;
@@ -85,6 +97,48 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
     },
     [model, onUpdate],
   );
+
+  const openTagModal = () => {
+    setModalTags([...model!.tags]);
+    setEditingTagIndex(null);
+    setEditingTagValue("");
+    setIsTagModalOpen(true);
+  };
+
+  const handleDeleteModalTag = (index: number) => {
+    setModalTags((prev) => prev.filter((_, i) => i !== index));
+    if (editingTagIndex === index) setEditingTagIndex(null);
+  };
+
+  const handleStartEditTag = (index: number) => {
+    setEditingTagIndex(index);
+    setEditingTagValue(modalTags[index]);
+  };
+
+  const handleConfirmTagEdit = () => {
+    const trimmed = editingTagValue.trim();
+    if (editingTagIndex === null) return;
+    if (trimmed) {
+      setModalTags((prev) => prev.map((t, i) => (i === editingTagIndex ? trimmed : t)));
+    } else {
+      setModalTags((prev) => prev.filter((_, i) => i !== editingTagIndex));
+    }
+    setEditingTagIndex(null);
+    setEditingTagValue("");
+  };
+
+  const handleAddModalTag = () => {
+    const trimmed = (newTagInputRef.current?.value ?? "").trim();
+    if (trimmed) {
+      setModalTags((prev) => [...prev, trimmed]);
+      if (newTagInputRef.current) newTagInputRef.current.value = "";
+    }
+  };
+
+  const handleSaveModalTags = () => {
+    onUpdate(model!.id, { tags: modalTags });
+    setIsTagModalOpen(false);
+  };
 
   if (!model) return null;
 
@@ -271,7 +325,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             Download
           </Button>
 
-          <Button
+          {/* <Button
             fullWidth
             href={api.getSlicerUrl(model)}
             variant="outlined"
@@ -280,7 +334,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             <Typography noWrap variant="subtitle2">
               Open in Slicer
             </Typography>
-          </Button>
+          </Button> */}
         </Stack>
 
         {/* Info Form */}
@@ -381,52 +435,49 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-2 gap-3 p-3 rounded-md border border-vault-700/50 -mt-2">
               <div className="col-span-2">
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    minWidth: 0,
-                  }}
-                >
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                   <Typography variant="body2" sx={{ color: "text.secondary" }}>
                     Tags:
                   </Typography>
-                  {isEditing ? (
-                    <TextField
-                      fullWidth
-                      value={editTags}
-                      onChange={(e) => setEditTags(e.target.value)}
-                      placeholder="scifi, armor, character..."
-                      multiline
-                    />
-                  ) : (
-                    <Grid container spacing={1} columns={12}>
-                      {model.tags.length > 0 ? (
-                        model.tags.map((tag) => (
-                          <Grid
-                            display="flex"
-                            justifyContent="center"
-                            alignItems="center"
-                            size="auto"
-                          >
-                            <Chip
-                              size="small"
-                              key={tag}
-                              label={tag}
-                              icon={<TagIcon className="w-4 pl-1" />}
-                            ></Chip>
-                          </Grid>
-                        ))
-                      ) : (
-                        <span className="text-slate-600 italic text-sm">
-                          No tags
-                        </span>
-                      )}
-                    </Grid>
+                  {user?.is_superuser && (
+                    <Button size="small" variant="outlined" startIcon={<Edit />} onClick={openTagModal}>
+                      Edit Tags
+                    </Button>
                   )}
                 </Stack>
+                {isEditing ? (
+                  <TextField
+                    fullWidth
+                    value={editTags}
+                    onChange={(e) => setEditTags(e.target.value)}
+                    placeholder="scifi, armor, character..."
+                    multiline
+                  />
+                ) : (
+                  <Grid container spacing={1} columns={12}>
+                    {model.tags.length > 0 ? (
+                      model.tags.map((tag) => (
+                        <Grid
+                          key={tag}
+                          display="flex"
+                          justifyContent="center"
+                          alignItems="center"
+                          size="auto"
+                        >
+                          <Chip
+                            size="small"
+                            label={tag}
+                            icon={<TagIcon className="w-4 pl-1" />}
+                          />
+                        </Grid>
+                      ))
+                    ) : (
+                      <span className="text-slate-600 italic text-sm">
+                        No tags
+                      </span>
+                    )}
+                  </Grid>
+                )}
               </div>
               <Divider className="col-span-2" />
 
@@ -610,6 +661,63 @@ const DetailPanel: React.FC<DetailPanelProps> = ({
           </Button>
           </>}
         </Stack>
+
+        {/* Tag Edit Modal */}
+        <Dialog open={isTagModalOpen} onClose={() => setIsTagModalOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Edit Tags</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2, minHeight: 40, pt: 1 }}>
+              {modalTags.length === 0 && (
+                <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
+                  No tags yet
+                </Typography>
+              )}
+              {modalTags.map((tag, i) =>
+                editingTagIndex === i ? (
+                  <TextField
+                    key={i}
+                    autoFocus
+                    size="small"
+                    value={editingTagValue}
+                    onChange={(e) => setEditingTagValue(e.target.value)}
+                    onBlur={handleConfirmTagEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleConfirmTagEdit();
+                      if (e.key === "Escape") setEditingTagIndex(null);
+                    }}
+                    sx={{ width: 130 }}
+                  />
+                ) : (
+                  <Chip
+                    key={i}
+                    label={tag}
+                    icon={<TagIcon className="w-4 pl-1" />}
+                    onClick={() => handleStartEditTag(i)}
+                    onDelete={() => handleDeleteModalTag(i)}
+                  />
+                )
+              )}
+            </Box>
+            <Stack direction="row" spacing={1}>
+              <TextField
+                fullWidth
+                size="small"
+                inputRef={newTagInputRef}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddModalTag(); }}
+                placeholder="New tag..."
+              />
+              <Button variant="contained" onClick={handleAddModalTag}>
+                Add
+              </Button>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setIsTagModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveModalTags} variant="contained" color="success">
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Error Modal Overlay */}
         {errorState.show && (
